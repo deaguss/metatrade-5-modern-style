@@ -4,7 +4,7 @@ import { TOOLS } from './tools.js';
 import { DEFAULT_STYLE } from './style.js';
 import { clone, merge } from './util.js';
 
-export const FORMAT = 'modern-screen-templates';
+export const FORMAT = 'innachart-templates';
 
 export function emptyTemplates() {
   return { format: FORMAT, version: 1, chart: {}, tools: {}, defaults: { chart: null, tools: {} } };

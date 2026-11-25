@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 96" width="360" height="96">
+  <title>InnaChart</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3b6cff"/>
+      <stop offset="1" stop-color="#1636b8"/>
+    </linearGradient>
+  </defs>
+  <rect width="360" height="96" rx="18" fill="#0f0f0f"/>
+  <g transform="translate(16 16)">
+    <rect width="64" height="64" rx="15" fill="url(#bg)"/>
+    <circle cx="24" cy="14.5" r="5.5" fill="#ffffff"/>
+    <rect x="22.5" y="23" width="3" height="30" rx="1.5" fill="#ffffff"/>
+    <rect x="17" y="28" width="14" height="18" rx="3" fill="#ffffff"/>
+    <rect x="40.5" y="14" width="3" height="8" rx="1.5" fill="#cfdcff"/>
+    <rect x="35.25" y="21.25" width="13.5" height="15.5" rx="3" fill="none" stroke="#cfdcff" stroke-width="2.5"/>
+    <rect x="40.5" y="36" width="3" height="10" rx="1.5" fill="#cfdcff"/>
+  </g>
+  <text x="98" y="61" font-family="Trebuchet MS, Arial, sans-serif" font-size="40" font-weight="700" letter-spacing="0.5"><tspan fill="#ffffff">Inna</tspan><tspan fill="#5d8dff">Chart</tspan></text>
+</svg>

@@ -1,4 +1,4 @@
-// The WebSocket to ModernScreen.exe, and through it to the MT5 feed. Requests with an id get their
+// The WebSocket to InnaChart.exe, and through it to the MT5 feed. Requests with an id get their
 // reply as a promise. It connects again on its own; what the screen watches is sent again then.
 // It also measures the links (round trips, in ms) for the network indicator.
 
@@ -68,7 +68,7 @@ export class Feed {
       this.ws = null;
       this.state = 'closed';
       this.feedOn = false;
-      for (const [, w] of this.waiting) w.reject(new Error('The link to ModernScreen.exe closed.'));
+      for (const [, w] of this.waiting) w.reject(new Error('The link to InnaChart.exe closed.'));
       this.waiting.clear();
       this.emit('state', this.state);
       this.later();
@@ -128,7 +128,7 @@ export class Feed {
       if (!this.send({ ...msg, id })) {
         clearTimeout(timer);
         this.waiting.delete(id);
-        reject(new Error('Not connected to ModernScreen.exe.'));
+        reject(new Error('Not connected to InnaChart.exe.'));
       }
     });
   }

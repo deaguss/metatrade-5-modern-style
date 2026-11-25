@@ -4,11 +4,12 @@
 //+------------------------------------------------------------------+
 #property copyright   "ActionInna, MIT licence"
 #property link        "https://github.com/deaguss/metatrade-5-modern-style"
-#property version     "1.30"
+#property version     "1.40"
 #property description "Risk trade panel: 1% / 1.5% / 2% / custom risk presets, SL/TP in pips, price or R,"
 #property description "a chart preview before anything is sent, and recall of the SL/TP you used before."
 
 #include <ActionInna\App.mqh>
+#include <ActionInna\ScreenLink.mqh>
 
 input group "Risk"
 input double              InpRisk1          = 1.0;            // Risk preset 1 (%)
@@ -62,8 +63,12 @@ input int                 InpFontSize       = 9;              // Font size
 input bool                InpSounds         = true;           // Play a sound when an order is sent or refused
 input bool                InpDebugLog       = true;           // Write a log to MQL5\Files\ActionInna\log.txt
 
+input group "InnaChart"
+input bool                InpInnaChart      = true;           // Serve InnaChart's order ticket (one chart in this MT5 does it)
+
 
 CAiApp  g_app;
+CAiLink g_link;
 ulong   g_appTimerMs = 0;
 
 int OnInit()
@@ -111,11 +116,14 @@ int OnInit()
    g_app.cfg.sounds = InpSounds;
    g_app.cfg.debugLog = InpDebugLog;
    int result = g_app.Init();
+   if(result == INIT_SUCCEEDED)
+      g_link.Init(g_app.cfg, InpInnaChart);
    return result;
   }
 
 void OnDeinit(const int reason)
   {
+   g_link.Deinit();
    g_app.Deinit(reason);
   }
 
@@ -126,6 +134,8 @@ void OnTick()
 
 void OnTimer()
   {
+   g_link.Timer();
+   // While this chart serves InnaChart's ticket the timer runs every 25 ms; the panel keeps its pace.
    ulong now = GetMicrosecondCount() / 1000;
    if(now - g_appTimerMs >= 150)
      {
@@ -134,6 +144,11 @@ void OnTimer()
      }
   }
 
+
+void OnTradeTransaction(const MqlTradeTransaction &trans, const MqlTradeRequest &request, const MqlTradeResult &result)
+  {
+   g_link.OnTrade();
+  }
 
 void OnChartEvent(const int id, const long &lparam, const double &dparam, const string &sparam)
   {

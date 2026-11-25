@@ -1,4 +1,4 @@
-// The program's log, %LOCALAPPDATA%\ModernScreen\host.log: one line a thing that happened, never
+// The program's log, %LOCALAPPDATA%\InnaChart\host.log: one line a thing that happened, never
 // a message's contents. It keeps one older file of 512 KB.
 using System;
 using System.IO;

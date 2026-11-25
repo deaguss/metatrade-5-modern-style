@@ -1,4 +1,4 @@
-// The screen's saved files (drawings, templates, settings) in one folder, %APPDATA%\ModernScreen
+// The screen's saved files (drawings, templates, settings) in one folder, %APPDATA%\InnaChart
 // by default. A write goes to a new file first and replaces the old one only when complete; the
 // file it replaced is kept as <name>.bak.
 using System;

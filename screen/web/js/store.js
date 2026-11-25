@@ -1,4 +1,4 @@
-// The screen's saved files, kept by ModernScreen.exe in %APPDATA%\ModernScreen. Without the program
+// The screen's saved files, kept by InnaChart.exe in %APPDATA%\InnaChart. Without the program
 // (the page opened on its own) they are kept in the browser instead.
 
 export class Store {

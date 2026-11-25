@@ -1,4 +1,4 @@
-// The pipe the ModernScreen service in each MetaTrader 5 connects to. The pipe tells which process
+// The pipe the InnaChart service in each MetaTrader 5 connects to. The pipe tells which process
 // is on the other end, and the service runs inside terminal64.exe, so each feed is known by its
 // MetaTrader 5's process id: the screen glued onto that MetaTrader 5 gets that feed.
 using System;
@@ -134,7 +134,7 @@ sealed class Terminal
 
 sealed class FeedServer
 {
-    public const string PipeName = "ModernScreen.Feed";
+    public const string PipeName = "InnaChart.Feed";
 
     [DllImport("kernel32.dll", SetLastError = true)]
     static extern bool GetNamedPipeClientProcessId(IntPtr pipe, out uint pid);

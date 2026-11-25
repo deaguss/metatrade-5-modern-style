@@ -1,4 +1,4 @@
-/* The Modern Screen: near-black, quiet chrome, the chart takes the room. */
+/* InnaChart: near-black, quiet chrome, the chart takes the room. */
 :root {
   --bg: #0f0f0f;
   --panel: #141414;
@@ -44,6 +44,7 @@ button { cursor: pointer; }
   overflow: hidden;
   contain: inline-size;   /* its buttons never widen the chart's column */
 }
+.bar .logo { width: 22px; height: 22px; margin: 0 6px 0 2px; flex: none; }
 .bar .sep { width: 1px; height: 22px; background: var(--line); margin: 0 6px; flex: none; }
 .bar .grow { flex: 1; }
 .tb {

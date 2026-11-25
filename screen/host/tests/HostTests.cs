@@ -1,4 +1,4 @@
-// Tests for ModernScreen.exe's parts that need no MetaTrader 5 and no window: frames, HTTP,
+// Tests for InnaChart.exe's parts that need no MetaTrader 5 and no window: frames, HTTP,
 // WebSocket, the web server's checks, the store and the placement arithmetic.
 // Built and run by scripts\build-screen.ps1 -Tests.
 using System;
@@ -190,7 +190,7 @@ static class HostTests
         Check(!Store.ValidName("a.txt"), "not JSON");
         Check(!Store.ValidName("a/b.json"), "a folder");
         Check(!Store.ValidName(".json"), "no name");
-        string dir = Path.Combine(Path.GetTempPath(), "ModernScreenTests-" + Guid.NewGuid().ToString("N"));
+        string dir = Path.Combine(Path.GetTempPath(), "InnaChartTests-" + Guid.NewGuid().ToString("N"));
         try
         {
             var s = new Store(dir);

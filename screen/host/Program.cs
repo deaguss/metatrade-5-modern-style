@@ -1,4 +1,4 @@
-// ModernScreen.exe: a tray program that serves the Modern Screen and glues it onto each MetaTrader 5.
+// InnaChart.exe: a tray program that serves InnaChart and glues it onto each MetaTrader 5.
 // One runs per Windows user; starting it again shows the screens of the one already running.
 using System;
 using System.Diagnostics;
@@ -13,7 +13,7 @@ using Microsoft.Win32;
 static class Program
 {
     const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    const string RunName = "ModernScreen";
+    const string RunName = "InnaChart";
 
     [StructLayout(LayoutKind.Sequential)]
     struct PowerThrottling { public uint Version, ControlMask, StateMask; }
@@ -27,8 +27,8 @@ static class Program
     {
         Options options = Options.Parse(args);
         bool first;
-        using (var mutex = new Mutex(true, @"Local\ModernScreen.Host", out first))
-        using (var showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\ModernScreen.Show"))
+        using (var mutex = new Mutex(true, @"Local\InnaChart.Host", out first))
+        using (var showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\InnaChart.Show"))
         {
             if (!first)
             {
@@ -46,7 +46,7 @@ static class Program
                 try { host.Start(tray.Ui); }
                 catch (Exception e)
                 {
-                    MessageBox.Show("Modern Screen could not start:\n\n" + e.Message, "Modern Screen", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("InnaChart could not start:\n\n" + e.Message, "InnaChart", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return 1;
                 }
                 Application.Run(tray);
@@ -127,7 +127,7 @@ sealed class Tray : ApplicationContext
         icon = new NotifyIcon
         {
             Icon = MakeIcon(),
-            Text = "Modern Screen (Ctrl+Alt+M shows or hides it)",
+            Text = "InnaChart (Ctrl+Alt+M shows or hides it)",
             ContextMenuStrip = menu,
             Visible = true,
         };
@@ -173,37 +173,47 @@ sealed class Tray : ApplicationContext
         base.Dispose(disposing);
     }
 
-    // A small chart: two candles on a near-black rounded square.
+    // InnaChart's logo (screen/web/img/logo.svg), drawn: the i of Inna as a rising candle with its
+    // dot, a hollow falling candle beside it, on a blue rounded square.
     static Icon MakeIcon()
     {
+        const float k = 32f / 64f;   // the logo is drawn on 64 x 64
         using (var bmp = new Bitmap(32, 32))
         {
             using (Graphics g = Graphics.FromImage(bmp))
             {
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.Clear(Color.Transparent);
-                using (var path = new GraphicsPath())
-                {
-                    path.AddArc(0, 0, 10, 10, 180, 90);
-                    path.AddArc(21, 0, 10, 10, 270, 90);
-                    path.AddArc(21, 21, 10, 10, 0, 90);
-                    path.AddArc(0, 21, 10, 10, 90, 90);
-                    path.CloseFigure();
-                    using (var bg = new SolidBrush(Color.FromArgb(26, 26, 26))) g.FillPath(bg, path);
-                }
+                g.ScaleTransform(k, k);
+                using (var path = Rounded(0, 0, 64, 64, 15))
+                using (var bg = new LinearGradientBrush(new PointF(0, 0), new PointF(64, 64), Color.FromArgb(59, 108, 255), Color.FromArgb(22, 54, 184)))
+                    g.FillPath(bg, path);
                 using (var white = new SolidBrush(Color.White))
-                using (var blue = new SolidBrush(Color.FromArgb(41, 98, 255)))
-                using (var wp = new Pen(Color.White, 2))
-                using (var bp = new Pen(Color.FromArgb(41, 98, 255), 2))
+                using (var light = new SolidBrush(Color.FromArgb(207, 220, 255)))
+                using (var outline = new Pen(Color.FromArgb(207, 220, 255), 2.5f))
                 {
-                    g.DrawLine(wp, 11, 5, 11, 25);
-                    g.FillRectangle(white, 8, 10, 6, 11);
-                    g.DrawLine(bp, 21, 8, 21, 28);
-                    g.FillRectangle(blue, 18, 12, 6, 12);
+                    g.FillEllipse(white, 24 - 5.5f, 14.5f - 5.5f, 11, 11);
+                    using (var p = Rounded(22.5f, 23, 3, 30, 1.5f)) g.FillPath(white, p);
+                    using (var p = Rounded(17, 28, 14, 18, 3)) g.FillPath(white, p);
+                    using (var p = Rounded(40.5f, 14, 3, 8, 1.5f)) g.FillPath(light, p);
+                    using (var p = Rounded(35.25f, 21.25f, 13.5f, 15.5f, 3)) g.DrawPath(outline, p);
+                    using (var p = Rounded(40.5f, 36, 3, 10, 1.5f)) g.FillPath(light, p);
                 }
             }
             return Icon.FromHandle(bmp.GetHicon());
         }
+    }
+
+    static GraphicsPath Rounded(float x, float y, float w, float h, float r)
+    {
+        var path = new GraphicsPath();
+        float d = r * 2;
+        path.AddArc(x, y, d, d, 180, 90);
+        path.AddArc(x + w - d, y, d, d, 270, 90);
+        path.AddArc(x + w - d, y + h - d, d, d, 0, 90);
+        path.AddArc(x, y + h - d, d, d, 90, 90);
+        path.CloseFigure();
+        return path;
     }
 
     sealed class HotkeyWindow : NativeWindow

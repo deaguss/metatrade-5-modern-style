@@ -138,7 +138,8 @@ sealed class Glue
             string t = Native.Title(h);
             int hash = t.LastIndexOf(" #", StringComparison.Ordinal);
             int pid;
-            bool ours = t == "Modern Screen" || (t.StartsWith("Modern Screen", StringComparison.Ordinal) && hash > 0 && int.TryParse(t.Substring(hash + 2), out pid));
+            bool named = t.StartsWith("InnaChart", StringComparison.Ordinal) || t.StartsWith("Modern Screen", StringComparison.Ordinal);   // its name before 1.3
+            bool ours = t == "InnaChart" || t == "Modern Screen" || (named && hash > 0 && int.TryParse(t.Substring(hash + 2), out pid));
             if (ours)
             {
                 leftovers.Add(h);   // never taken for a new screen while it closes
@@ -338,7 +339,7 @@ sealed class Glue
         {
             if (leftovers.Contains(h) || !Native.IsWindowVisible(h) || Native.Class(h) != "Chrome_WidgetWin_1") return true;
             string t = Native.Title(h);
-            if (t.StartsWith("Modern Screen", StringComparison.Ordinal) && t.EndsWith(a, StringComparison.Ordinal) ||
+            if (t.StartsWith("InnaChart", StringComparison.Ordinal) && t.EndsWith(a, StringComparison.Ordinal) ||
                 t.Contains(b + "&") || t.EndsWith(b, StringComparison.Ordinal))
             {
                 found = h;

@@ -1,10 +1,10 @@
-// A stand-in for the ModernScreen service, for developing and testing without MetaTrader 5. It
-// connects to ModernScreen.exe's pipe like the service and answers the same requests with made-up
+// A stand-in for the InnaChart service, for developing and testing without MetaTrader 5. It
+// connects to InnaChart.exe's pipe like the service and answers the same requests with made-up
 // prices (the same bars every time for the same symbol and time). It moves the price a few times a
-// second. Run: node screen/tools/fake-feed.js   (ModernScreen.exe must be running)
+// second. Run: node screen/tools/fake-feed.js   (InnaChart.exe must be running)
 import net from 'node:net';
 
-const PIPE = '\\\\.\\pipe\\ModernScreen.Feed';
+const PIPE = '\\\\.\\pipe\\InnaChart.Feed';
 const TF = { M1: 60, M2: 120, M3: 180, M4: 240, M5: 300, M6: 360, M10: 600, M12: 720, M15: 900, M20: 1200, M30: 1800,
   H1: 3600, H2: 7200, H3: 10800, H4: 14400, H6: 21600, H8: 28800, H12: 43200, D1: 86400, W1: 604800, MN1: 2592000 };
 const SYMBOLS = [
@@ -170,7 +170,7 @@ function connect() {
   let buf = Buffer.alloc(0);
   sock.on('connect', () => {
     socket = sock;
-    console.log('Connected to ModernScreen.exe as process ' + process.pid + '.');
+    console.log('Connected to InnaChart.exe as process ' + process.pid + '.');
     send({ t: 'hello', v: 1, company: 'Fake Broker', server: 'Fake-Demo', currency: 'USD', build: 5000, maxBars: 100000, now: now(), pulse: true });
     sendSymbols();
   });
@@ -191,7 +191,7 @@ function connect() {
   });
   sock.on('error', () => {});
   sock.on('close', () => {
-    if (socket === sock) console.log('ModernScreen.exe went away; trying again.');
+    if (socket === sock) console.log('InnaChart.exe went away; trying again.');
     socket = null;
     setTimeout(connect, 1000);
   });

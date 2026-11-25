@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Builds ModernScreen.exe (the Modern Screen's tray program) into build\screen\.
+    Builds InnaChart.exe (InnaChart's tray program) into build\screen\.
 
 .DESCRIPTION
     Uses the C# compiler that comes with Windows (.NET Framework 4), so nothing is downloaded.
@@ -40,7 +40,7 @@ function Invoke-Csc([string[]]$Arguments) {
     if ($code -ne 0) { throw "The C# compiler failed (exit code $code)." }
 }
 
-$Exe = Join-Path $Out 'ModernScreen.exe'
+$Exe = Join-Path $Out 'InnaChart.exe'
 Invoke-Csc (@('/nologo', '/target:winexe', '/optimize+', '/warn:4', "/out:$Exe") + $Refs + $Parts + (Join-Path $HostDir 'Program.cs'))
 Write-Host "Built $Exe"
 

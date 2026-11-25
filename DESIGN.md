@@ -55,7 +55,7 @@ Text needs 4.5:1 and control edges 3:1 (WCAG 2.x, computed, not estimated).
 The theme follows the chart background (input "Theme"). The values live in `AiBuildTheme`
 (`mql5/Include/ActionInna/Ui.mqh`).
 
-## The Modern Screen's colours
+## InnaChart's colours
 
 The screen (`screen/web/css/screen.css`, the chart's defaults in `screen/web/js/style.js`) is dark
 only, like the chart under it. Measured the same way:

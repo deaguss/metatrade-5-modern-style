@@ -73,6 +73,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: ModernScreen.exe builds with the C# compiler in Windows, and its tests pass
+      - name: InnaChart.exe builds with the C# compiler in Windows, and its tests pass
         shell: pwsh
         run: powershell -ExecutionPolicy Bypass -File scripts\build-screen.ps1 -Tests

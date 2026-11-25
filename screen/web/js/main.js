@@ -1,4 +1,4 @@
-// The Modern Screen: wires the feed from MT5, the chart, the toolbars, the drawings, the templates
+// InnaChart: wires the feed from MT5, the chart, the toolbars, the drawings, the templates
 // and the network indicator together.
 import { Chart } from './chart.js';
 import { Series } from './series.js';
@@ -17,7 +17,7 @@ const params = new URLSearchParams(location.search);
 const hash = new URLSearchParams(location.hash.slice(1));
 const TERM = Number(params.get('term')) || 0;
 const KEY = hash.get('key') || '';
-document.title = 'Modern Screen' + (TERM ? ' #' + TERM : '');
+document.title = 'InnaChart' + (TERM ? ' #' + TERM : '');
 
 const store = new Store(KEY);
 const chart = new Chart(document.getElementById('chart'));
@@ -106,7 +106,11 @@ function grow() {
   return el('div', 'grow');
 }
 
-top.append(symbolBtn, sep(), tfBox, tfMore, sep(), typeBtn, sep(), undoBtn, redoBtn, grow(), netBtn, sep(), watchBtn, settingsBtn, windowBtn, hideBtn);
+const logo = el('img', 'logo');
+logo.src = 'img/logo.svg';
+logo.alt = 'InnaChart';
+logo.title = 'InnaChart';
+top.append(logo, symbolBtn, sep(), tfBox, tfMore, sep(), typeBtn, sep(), undoBtn, redoBtn, grow(), netBtn, sep(), watchBtn, settingsBtn, windowBtn, hideBtn);
 
 function paintWindowBtn() {
   const separate = !!(feed && feed.separate);
@@ -460,7 +464,7 @@ function exportTemplates() {
   const blob = new Blob([JSON.stringify(app.templates, null, 2)], { type: 'application/json' });
   const a = el('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'modern-screen-templates.json';
+  a.download = 'innachart-templates.json';
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
@@ -793,7 +797,7 @@ function fillNet() {
   netPanel.innerHTML = '<h4>Network and speed</h4>' +
     row('MT5 to the broker\'s server (ping)', st.connected === false ? 'not connected' : msText(st.brokerPing, 1), st.connected === false ? 'bad' : grade(st.brokerPing, 80, 200)) +
     row('Screen to MT5 and back', msText(st.feedRtt, 1), grade(st.feedRtt, 30, 120)) +
-    row('Screen to ModernScreen.exe and back', msText(st.hostRtt, 1), grade(st.hostRtt, 10, 50)) +
+    row('Screen to InnaChart.exe and back', msText(st.hostRtt, 1), grade(st.hostRtt, 10, 50)) +
     row('A tick to the screen', msText(app.perf.delay, 1), grade(app.perf.delay, 20, 60)) +
     row('Drawing one frame', msText(app.perf.render, 2), grade(app.perf.render, 8, 16)) +
     row('Age of the last tick', msText(tickAge()), '') +
@@ -817,7 +821,7 @@ async function loadChart(symbol, tf) {
   if (!sameSymbol && D.owner) saveDrawings.flush(D.owner, D.items);
   app.layout.symbol = symbol;
   app.layout.tf = tf;
-  document.title = 'Modern Screen - ' + symbol + ', ' + tfLabel(tf) + (TERM ? ' #' + TERM : '');
+  document.title = 'InnaChart - ' + symbol + ', ' + tfLabel(tf) + (TERM ? ' #' + TERM : '');
   saveLayout();
   renderTop();
   watch.setCurrent(symbol);
@@ -1013,11 +1017,11 @@ D.templateFor = (type) => toolStart(app.templates, type);
 
 function updateNotice() {
   if (!feed) {
-    showNotice('Open the screen from ModernScreen.exe', 'This page needs ModernScreen.exe running on this PC: it is opened by the program (its tray icon), not on its own.');
+    showNotice('Open the screen from InnaChart.exe', 'This page needs InnaChart.exe running on this PC: it is opened by the program (its tray icon), not on its own.');
     return;
   }
-  if (feed.state !== 'open') showNotice('Connecting to ModernScreen.exe...', '');
-  else if (!feed.feedOn) showNotice('Waiting for MetaTrader 5', 'Add the ModernScreen service once: in MetaTrader 5\'s Navigator, right-click Services > Add Service > ModernScreen > OK. It starts by itself from then on.');
+  if (feed.state !== 'open') showNotice('Connecting to InnaChart.exe...', '');
+  else if (!feed.feedOn) showNotice('Waiting for MetaTrader 5', 'Add the InnaChart service once: in MetaTrader 5\'s Navigator, right-click Services > Add Service > InnaChart > OK. It starts by itself from then on.');
   else showNotice(null);
 }
 

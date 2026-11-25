@@ -9,20 +9,20 @@
         mql5\Experts\ActionInna   ->  <data folder>\MQL5\Experts\ActionInna
         mql5\Include\ActionInna   ->  <data folder>\MQL5\Include\ActionInna
         mql5\Scripts\ActionInna   ->  <data folder>\MQL5\Scripts\ActionInna
-        mql5\Include\ModernScreen ->  <data folder>\MQL5\Include\ModernScreen
-        mql5\Services\ModernScreen -> <data folder>\MQL5\Services\ModernScreen
-    then compiles the ActionInna order ticket, the ModernStyle script and the ModernScreen service
+        mql5\Include\InnaChart ->  <data folder>\MQL5\Include\InnaChart
+        mql5\Services\InnaChart -> <data folder>\MQL5\Services\InnaChart
+    then compiles the ActionInna order ticket, the ModernStyle script and the InnaChart service
     with that terminal's own MetaEditor.
 
-    Then it builds the Modern Screen program (ModernScreen.exe) into %LOCALAPPDATA%\ModernScreen\app
+    Then it builds the InnaChart program (InnaChart.exe) into %LOCALAPPDATA%\InnaChart\app
     with the C# compiler that comes with Windows, asks whether it should start with Windows (so the
     screen opens with MetaTrader 5), and starts it. Running it again updates everything.
 
 .PARAMETER StartWithWindows
-    Start the Modern Screen with Windows without asking.
+    Start InnaChart with Windows without asking.
 
 .PARAMETER NoScreen
-    Install the MetaTrader 5 programs only, not the Modern Screen.
+    Install the MetaTrader 5 programs only, not InnaChart.
 
 .PARAMETER NoCompile
     Copy the files only. Compile them in MetaEditor yourself (F4 in MetaTrader 5, then F7).
@@ -37,8 +37,8 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_common.ps1')
 
 $Repo = Split-Path -Parent $PSScriptRoot
-$Parts = @('Experts\ActionInna', 'Include\ActionInna', 'Scripts\ActionInna', 'Include\ModernScreen', 'Services\ModernScreen')
-$Programs = @('Experts\ActionInna\ActionInna.mq5', 'Scripts\ActionInna\ModernStyle.mq5', 'Services\ModernScreen\ModernScreen.mq5')
+$Parts = @('Experts\ActionInna', 'Include\ActionInna', 'Scripts\ActionInna', 'Include\InnaChart', 'Services\InnaChart')
+$Programs = @('Experts\ActionInna\ActionInna.mq5', 'Scripts\ActionInna\ModernStyle.mq5', 'Services\InnaChart\InnaChart.mq5')
 
 function Say([string]$Text, [string]$Color = 'Gray') { Write-Host $Text -ForegroundColor $Color }
 
@@ -121,13 +121,25 @@ if ($installed -eq 0) {
 }
 Say "Done: installed in $installed MetaTrader 5." 'Green'
 
-# The Modern Screen: the program that opens the screen on MetaTrader 5's chart area.
+# InnaChart: the program that opens the screen on MetaTrader 5's chart area.
 if (-not $NoScreen) {
     Say ''
-    Say 'Modern Screen' 'White'
-    $app = Join-Path $env:LOCALAPPDATA 'ModernScreen\app'
-    $exe = Join-Path $app 'ModernScreen.exe'
-    $running = @(Get-Process -Name ModernScreen -ErrorAction SilentlyContinue)
+    Say 'InnaChart' 'White'
+    # Its name was Modern Screen up to version 1.2: that program stops and no longer starts with
+    # Windows. Its saved drawings and templates are carried over once.
+    Get-Process -Name ModernScreen -ErrorAction SilentlyContinue | Stop-Process -Force
+    if (Get-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name ModernScreen -ErrorAction SilentlyContinue) {
+        Remove-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name ModernScreen
+    }
+    $oldSaved = Join-Path $env:APPDATA 'ModernScreen'
+    $newSaved = Join-Path $env:APPDATA 'InnaChart'
+    if ((Test-Path -LiteralPath $oldSaved) -and -not (Test-Path -LiteralPath $newSaved)) {
+        Copy-Item -LiteralPath $oldSaved -Destination $newSaved -Recurse
+        Say '  your drawings and templates were carried over from Modern Screen' 'Green'
+    }
+    $app = Join-Path $env:LOCALAPPDATA 'InnaChart\app'
+    $exe = Join-Path $app 'InnaChart.exe'
+    $running = @(Get-Process -Name InnaChart -ErrorAction SilentlyContinue)
     if ($running.Count -gt 0) {
         $running | Stop-Process -Force
         Start-Sleep -Milliseconds 500
@@ -135,19 +147,19 @@ if (-not $NoScreen) {
     $built = $true
     try { & (Join-Path $PSScriptRoot 'build-screen.ps1') -Out $app | Out-Null }
     catch {
-        Say "  could not build the Modern Screen: $($_.Exception.Message)" 'Red'
+        Say "  could not build InnaChart: $($_.Exception.Message)" 'Red'
         $built = $false
     }
     if ($built) {
         Say "  installed in $app" 'Green'
         $runKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
-        $start = $StartWithWindows -or [bool](Get-ItemProperty -Path $runKey -Name ModernScreen -ErrorAction SilentlyContinue)
+        $start = $StartWithWindows -or [bool](Get-ItemProperty -Path $runKey -Name InnaChart -ErrorAction SilentlyContinue)
         if (-not $start) {
-            $answer = Read-Host '  Start the Modern Screen with Windows, so it opens with MetaTrader 5? (Y/n)'
+            $answer = Read-Host '  Start InnaChart with Windows, so it opens with MetaTrader 5? (Y/n)'
             $start = ($answer -eq '' -or $answer -match '^[Yy]')
         }
         if ($start) {
-            Set-ItemProperty -Path $runKey -Name ModernScreen -Value ('"' + $exe + '"')
+            Set-ItemProperty -Path $runKey -Name InnaChart -Value ('"' + $exe + '"')
             Say '  starts with Windows' 'Green'
         }
         Start-Process -FilePath $exe
@@ -161,8 +173,8 @@ Say '  2. Turn on "Algo Trading" in the toolbar.'
 Say '  3. Drag Expert Advisors > ActionInna > ActionInna onto a chart and press OK.'
 Say '  4. For the chart style, drag Scripts > ActionInna > ModernStyle onto the chart and press OK.'
 if (-not $NoScreen) {
-    Say '  5. For the Modern Screen, once: in the Navigator right-click "Services", choose Add Service,'
-    Say '     pick ModernScreen and press OK. From then on the screen opens with MetaTrader 5.'
+    Say '  5. For InnaChart, once: in the Navigator right-click "Services", choose Add Service,'
+    Say '     pick InnaChart and press OK. From then on the screen opens with MetaTrader 5.'
     Say '     Ctrl+Alt+M (or the tray icon) hides it and shows it again.'
 }
 Say ''

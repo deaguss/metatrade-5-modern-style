@@ -43,8 +43,8 @@ $Links = @(
     @{ Link = 'MQL5\Experts\ActionInna'; Target = 'mql5\Experts\ActionInna' },
     @{ Link = 'MQL5\Include\ActionInna'; Target = 'mql5\Include\ActionInna' },
     @{ Link = 'MQL5\Scripts\ActionInna'; Target = 'mql5\Scripts\ActionInna' },
-    @{ Link = 'MQL5\Include\ModernScreen'; Target = 'mql5\Include\ModernScreen' },
-    @{ Link = 'MQL5\Services\ModernScreen'; Target = 'mql5\Services\ModernScreen' },
+    @{ Link = 'MQL5\Include\InnaChart'; Target = 'mql5\Include\InnaChart' },
+    @{ Link = 'MQL5\Services\InnaChart'; Target = 'mql5\Services\InnaChart' },
     @{ Link = 'MQL5\Files\ActionInna';   Target = 'runtime' }
 )
 

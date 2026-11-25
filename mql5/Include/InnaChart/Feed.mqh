@@ -1,29 +1,29 @@
 //+------------------------------------------------------------------+
-//| Modern Screen - the feed: this terminal's bars and prices        |
+//| InnaChart - the feed: this terminal's bars and prices        |
 //+------------------------------------------------------------------+
-// The ModernScreen service runs this. It connects to ModernScreen.exe through a named pipe and
+// The InnaChart service runs this. It connects to InnaChart.exe through a named pipe and
 // answers the screen's requests with the terminal's own data: bars from CopyRates (the same bars as
 // MT5's charts, in the broker's server time), the last bar of each watched chart and the quotes of
 // the watched symbols as they change. It never trades and never sends the account number.
-#ifndef MODERNSCREEN_FEED_MQH
-#define MODERNSCREEN_FEED_MQH
+#ifndef INNACHART_FEED_MQH
+#define INNACHART_FEED_MQH
 
 #include "Json.mqh"
 
-#define MS_PIPE          "\\\\.\\pipe\\ModernScreen.Feed"
-#define MS_MAX_FRAME     1048576   // bytes in one frame, as the host allows
-#define MS_MAX_BARS      5000      // bars in one history reply
-#define MS_QUOTE_MS      250       // a symbol's quote at most this often
-#define MS_HISTORY_WAIT  15000     // ms to wait for history MT5 is still downloading
-#define MS_MAX_WATCH     16        // charts kept live at once
-#define MS_MAX_QUOTES    200       // symbols whose quotes are sent
-#define MS_MAX_PENDING   32        // history requests waiting at once
-#define MS_MAX_FOUND     60
+#define IC_PIPE          "\\\\.\\pipe\\InnaChart.Feed"
+#define IC_MAX_FRAME     1048576   // bytes in one frame, as the host allows
+#define IC_MAX_BARS      5000      // bars in one history reply
+#define IC_QUOTE_MS      250       // a symbol's quote at most this often
+#define IC_HISTORY_WAIT  15000     // ms to wait for history MT5 is still downloading
+#define IC_MAX_WATCH     16        // charts kept live at once
+#define IC_MAX_QUOTES    200       // symbols whose quotes are sent
+#define IC_MAX_PENDING   32        // history requests waiting at once
+#define IC_MAX_FOUND     60
 
-//--- The pipe to ModernScreen.exe. Frames are a 4-byte little-endian length and UTF-8 JSON. Reads
+//--- The pipe to InnaChart.exe. Frames are a 4-byte little-endian length and UTF-8 JSON. Reads
 //--- wait for nothing: FileSize tells how many bytes have arrived. A host that went away shows
 //--- when a write fails.
-class CMsPipe
+class CIcPipe
   {
 private:
    int               m_h;
@@ -31,16 +31,16 @@ private:
    bool              m_broken;
 
 public:
-                     CMsPipe() : m_h(INVALID_HANDLE), m_need(-1), m_broken(false) {}
+                     CIcPipe() : m_h(INVALID_HANDLE), m_need(-1), m_broken(false) {}
 
    bool              IsOpen() const { return m_h != INVALID_HANDLE; }
    bool              Broken() const { return m_broken; }
 
-   // Fails at once when ModernScreen.exe isn't running.
+   // Fails at once when InnaChart.exe isn't running.
    bool              Open()
      {
       Close();
-      m_h = FileOpen(MS_PIPE, FILE_READ | FILE_WRITE | FILE_BIN);
+      m_h = FileOpen(IC_PIPE, FILE_READ | FILE_WRITE | FILE_BIN);
       return m_h != INVALID_HANDLE;
      }
 
@@ -59,7 +59,7 @@ public:
          return false;
       uchar buf[];
       int n = StringToCharArray(json, buf, 0, WHOLE_ARRAY, CP_UTF8) - 1;   // without the closing zero
-      if(n <= 0 || n > MS_MAX_FRAME)
+      if(n <= 0 || n > IC_MAX_FRAME)
          return false;
       ResetLastError();
       if(FileWriteInteger(m_h, n) != 4 || FileWriteArray(m_h, buf, 0, n) != (uint)n)
@@ -80,7 +80,7 @@ public:
          return;
       ResetLastError();
       int len = FileReadInteger(m_h);
-      if(GetLastError() != 0 || len < 0 || len > MS_MAX_FRAME)
+      if(GetLastError() != 0 || len < 0 || len > IC_MAX_FRAME)
         {
          m_broken = true;
          return;
@@ -102,7 +102,7 @@ public:
                break;
             ResetLastError();
             int len = FileReadInteger(m_h);
-            if(GetLastError() != 0 || len < 0 || len > MS_MAX_FRAME)
+            if(GetLastError() != 0 || len < 0 || len > IC_MAX_FRAME)
               {
                m_broken = true;
                break;
@@ -135,7 +135,7 @@ public:
   };
 
 //--- Timeframes by the names MT5 shows (M1 ... MN1; MN is taken for MN1 too).
-bool MsTimeframe(const string name, ENUM_TIMEFRAMES &tf)
+bool IcTimeframe(const string name, ENUM_TIMEFRAMES &tf)
   {
    string n[] = {"M1", "M2", "M3", "M4", "M5", "M6", "M10", "M12", "M15", "M20", "M30",
                  "H1", "H2", "H3", "H4", "H6", "H8", "H12", "D1", "W1", "MN1", "MN"
@@ -154,7 +154,7 @@ bool MsTimeframe(const string name, ENUM_TIMEFRAMES &tf)
   }
 
 //--- One bar as the screen reads it: [time, open, high, low, close, tick volume].
-string MsBarRow(const MqlRates &r, const int digits)
+string IcBarRow(const MqlRates &r, const int digits)
   {
    return "[" + IntegerToString((long)r.time) + "," + DoubleToString(r.open, digits) + "," +
           DoubleToString(r.high, digits) + "," + DoubleToString(r.low, digits) + "," +
@@ -162,7 +162,7 @@ string MsBarRow(const MqlRates &r, const int digits)
   }
 
 //--- Splits "a\nb\nc" into its non-empty lines.
-int MsLines(const string text, string &out[])
+int IcLines(const string text, string &out[])
   {
    string parts[];
    int n = StringSplit(text, '\n', parts);
@@ -179,7 +179,7 @@ int MsLines(const string text, string &out[])
 
 // Watched charts, quotes and history requests are objects held by pointer: they are kept, moved
 // and dropped without copying their strings (see CONTRIBUTING.md).
-class CMsWatch
+class CIcWatch
   {
 public:
    string            sym;
@@ -192,7 +192,7 @@ public:
    MqlRates          last;      // the bar last sent
   };
 
-class CMsQuote
+class CIcQuote
   {
 public:
    string            sym;
@@ -204,7 +204,7 @@ public:
    ulong             prevAt;
   };
 
-class CMsPending
+class CIcPending
   {
 public:
    long              id;
@@ -217,13 +217,13 @@ public:
    ulong             nextTry;
   };
 
-class CMsFeed
+class CIcFeed
   {
 private:
-   CMsPipe           m_pipe;
-   CMsWatch         *m_watch[];
-   CMsQuote         *m_quotes[];
-   CMsPending       *m_pending[];
+   CIcPipe           m_pipe;
+   CIcWatch         *m_watch[];
+   CIcQuote         *m_quotes[];
+   CIcPending       *m_pending[];
    ulong             m_lastTry;
    ulong             m_lastClock;
    double            m_balance;
@@ -250,14 +250,14 @@ private:
 
    void              Error(const long id, const string why)
      {
-      m_pipe.Send("{\"t\":\"error\",\"id\":" + IntegerToString(id) + ",\"error\":" + MsJsonQuote(why) + "}");
+      m_pipe.Send("{\"t\":\"error\",\"id\":" + IntegerToString(id) + ",\"error\":" + IcJsonQuote(why) + "}");
      }
 
    void              SendHello()
      {
-      m_pipe.Send("{\"t\":\"hello\",\"v\":1,\"company\":" + MsJsonQuote(AccountInfoString(ACCOUNT_COMPANY)) +
-                  ",\"server\":" + MsJsonQuote(AccountInfoString(ACCOUNT_SERVER)) +
-                  ",\"currency\":" + MsJsonQuote(AccountInfoString(ACCOUNT_CURRENCY)) +
+      m_pipe.Send("{\"t\":\"hello\",\"v\":1,\"company\":" + IcJsonQuote(AccountInfoString(ACCOUNT_COMPANY)) +
+                  ",\"server\":" + IcJsonQuote(AccountInfoString(ACCOUNT_SERVER)) +
+                  ",\"currency\":" + IcJsonQuote(AccountInfoString(ACCOUNT_CURRENCY)) +
                   ",\"build\":" + IntegerToString(TerminalInfoInteger(TERMINAL_BUILD)) +
                   ",\"maxBars\":" + IntegerToString(TerminalInfoInteger(TERMINAL_MAXBARS)) +
                   ",\"now\":" + IntegerToString((long)TimeTradeServer()) + ",\"pulse\":true}");
@@ -273,7 +273,7 @@ private:
          string name = SymbolName(i, true);
          if(i > 0)
             s += ",";
-         s += "{\"name\":" + MsJsonQuote(name) + ",\"desc\":" + MsJsonQuote(SymbolInfoString(name, SYMBOL_DESCRIPTION)) +
+         s += "{\"name\":" + IcJsonQuote(name) + ",\"desc\":" + IcJsonQuote(SymbolInfoString(name, SYMBOL_DESCRIPTION)) +
               ",\"digits\":" + IntegerToString(SymbolInfoInteger(name, SYMBOL_DIGITS)) + "}";
         }
       m_pipe.Send(s + "]}");
@@ -286,19 +286,19 @@ private:
          Error(id, "Unknown symbol " + sym);
          return;
         }
-      m_pipe.Send("{\"t\":\"spec\",\"id\":" + IntegerToString(id) + ",\"sym\":" + MsJsonQuote(sym) +
-                  ",\"desc\":" + MsJsonQuote(SymbolInfoString(sym, SYMBOL_DESCRIPTION)) +
+      m_pipe.Send("{\"t\":\"spec\",\"id\":" + IntegerToString(id) + ",\"sym\":" + IcJsonQuote(sym) +
+                  ",\"desc\":" + IcJsonQuote(SymbolInfoString(sym, SYMBOL_DESCRIPTION)) +
                   ",\"digits\":" + IntegerToString(SymbolInfoInteger(sym, SYMBOL_DIGITS)) +
-                  ",\"point\":" + MsJsonNum(SymbolInfoDouble(sym, SYMBOL_POINT)) +
-                  ",\"tickSize\":" + MsJsonNum(SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_SIZE)) +
-                  ",\"tickValue\":" + MsJsonNum(SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_VALUE_LOSS)) +
-                  ",\"tickValueProfit\":" + MsJsonNum(SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_VALUE_PROFIT)) +
-                  ",\"contract\":" + MsJsonNum(SymbolInfoDouble(sym, SYMBOL_TRADE_CONTRACT_SIZE)) +
-                  ",\"volMin\":" + MsJsonNum(SymbolInfoDouble(sym, SYMBOL_VOLUME_MIN)) +
-                  ",\"volStep\":" + MsJsonNum(SymbolInfoDouble(sym, SYMBOL_VOLUME_STEP)) +
-                  ",\"volMax\":" + MsJsonNum(SymbolInfoDouble(sym, SYMBOL_VOLUME_MAX)) +
-                  ",\"profitCcy\":" + MsJsonQuote(SymbolInfoString(sym, SYMBOL_CURRENCY_PROFIT)) +
-                  ",\"accountCcy\":" + MsJsonQuote(AccountInfoString(ACCOUNT_CURRENCY)) + "}");
+                  ",\"point\":" + IcJsonNum(SymbolInfoDouble(sym, SYMBOL_POINT)) +
+                  ",\"tickSize\":" + IcJsonNum(SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_SIZE)) +
+                  ",\"tickValue\":" + IcJsonNum(SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_VALUE_LOSS)) +
+                  ",\"tickValueProfit\":" + IcJsonNum(SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_VALUE_PROFIT)) +
+                  ",\"contract\":" + IcJsonNum(SymbolInfoDouble(sym, SYMBOL_TRADE_CONTRACT_SIZE)) +
+                  ",\"volMin\":" + IcJsonNum(SymbolInfoDouble(sym, SYMBOL_VOLUME_MIN)) +
+                  ",\"volStep\":" + IcJsonNum(SymbolInfoDouble(sym, SYMBOL_VOLUME_STEP)) +
+                  ",\"volMax\":" + IcJsonNum(SymbolInfoDouble(sym, SYMBOL_VOLUME_MAX)) +
+                  ",\"profitCcy\":" + IcJsonQuote(SymbolInfoString(sym, SYMBOL_CURRENCY_PROFIT)) +
+                  ",\"accountCcy\":" + IcJsonQuote(AccountInfoString(ACCOUNT_CURRENCY)) + "}");
      }
 
    void              Find(const long id, const string query)
@@ -308,7 +308,7 @@ private:
       string s = "{\"t\":\"found\",\"id\":" + IntegerToString(id) + ",\"list\":[";
       int k = 0;
       int n = SymbolsTotal(false);
-      for(int i = 0; i < n && k < MS_MAX_FOUND; i++)
+      for(int i = 0; i < n && k < IC_MAX_FOUND; i++)
         {
          string name = SymbolName(i, false);
          string desc = SymbolInfoString(name, SYMBOL_DESCRIPTION);
@@ -320,29 +320,29 @@ private:
             continue;
          if(k++ > 0)
             s += ",";
-         s += "{\"name\":" + MsJsonQuote(name) + ",\"desc\":" + MsJsonQuote(desc) +
-              ",\"path\":" + MsJsonQuote(SymbolInfoString(name, SYMBOL_PATH)) +
+         s += "{\"name\":" + IcJsonQuote(name) + ",\"desc\":" + IcJsonQuote(desc) +
+              ",\"path\":" + IcJsonQuote(SymbolInfoString(name, SYMBOL_PATH)) +
               ",\"mw\":" + (SymbolInfoInteger(name, SYMBOL_SELECT) != 0 ? "true" : "false") + "}";
         }
       m_pipe.Send(s + "]}");
      }
 
    //--- History: answered when MT5 has the bars; while it downloads them, tried again until
-   //--- MS_HISTORY_WAIT has passed.
-   void              AddHistory(const CMsJsonIn &j)
+   //--- IC_HISTORY_WAIT has passed.
+   void              AddHistory(const CIcJsonIn &j)
      {
-      if(ArraySize(m_pending) >= MS_MAX_PENDING)
+      if(ArraySize(m_pending) >= IC_MAX_PENDING)
         {
          Error(j.Int("id"), "Too many history requests at once");
          return;
         }
-      CMsPending *p = new CMsPending;
+      CIcPending *p = new CIcPending;
       p.id = j.Int("id");
       p.sym = j.Str("sym");
       p.tfName = j.Str("tf");
       p.before = j.Int("before");
-      p.count = (int)MathMax(1, MathMin(MS_MAX_BARS, j.Int("count", 1000)));
-      if(!MsTimeframe(p.tfName, p.tf))
+      p.count = (int)MathMax(1, MathMin(IC_MAX_BARS, j.Int("count", 1000)));
+      if(!IcTimeframe(p.tfName, p.tf))
         {
          Error(p.id, "Unknown timeframe " + p.tfName);
          delete p;
@@ -354,7 +354,7 @@ private:
          delete p;
          return;
         }
-      p.deadline = GetTickCount64() + MS_HISTORY_WAIT;
+      p.deadline = GetTickCount64() + IC_HISTORY_WAIT;
       p.nextTry = 0;
       int n = ArraySize(m_pending);
       ArrayResize(m_pending, n + 1);
@@ -362,7 +362,7 @@ private:
      }
 
    // true when the request is finished (answered or failed).
-   bool              TryHistory(CMsPending *p, const ulong now)
+   bool              TryHistory(CIcPending *p, const ulong now)
      {
       if(now < p.nextTry)
          return false;
@@ -392,8 +392,8 @@ private:
       if(got < 0)
          got = 0;
       int digits = (int)SymbolInfoInteger(p.sym, SYMBOL_DIGITS);
-      string s = "{\"t\":\"bars\",\"id\":" + IntegerToString(p.id) + ",\"sym\":" + MsJsonQuote(p.sym) +
-                 ",\"tf\":" + MsJsonQuote(p.tfName) + ",\"digits\":" + IntegerToString(digits) +
+      string s = "{\"t\":\"bars\",\"id\":" + IntegerToString(p.id) + ",\"sym\":" + IcJsonQuote(p.sym) +
+                 ",\"tf\":" + IcJsonQuote(p.tfName) + ",\"digits\":" + IntegerToString(digits) +
                  ",\"done\":" + (got < p.count ? "true" : "false") + ",\"bars\":[";
       int k = 0;
       for(int i = 0; i < got; i++)
@@ -402,7 +402,7 @@ private:
             continue;   // only bars before the asked time
          if(k++ > 0)
             s += ",";
-         s += MsBarRow(r[i], digits);
+         s += IcBarRow(r[i], digits);
         }
       m_pipe.Send(s + "]}");
       return true;
@@ -424,8 +424,8 @@ private:
    void              SetWatch(const string list)
      {
       string items[];
-      int n = (int)MathMin(MS_MAX_WATCH, MsLines(list, items));
-      CMsWatch *next[];
+      int n = (int)MathMin(IC_MAX_WATCH, IcLines(list, items));
+      CIcWatch *next[];
       ArrayResize(next, 0);
       for(int i = 0; i < n; i++)
         {
@@ -435,9 +435,9 @@ private:
          string tfName = StringSubstr(items[i], 0, at);
          string sym = StringSubstr(items[i], at + 1);
          ENUM_TIMEFRAMES tf;
-         if(!MsTimeframe(tfName, tf) || !SymbolSelect(sym, true))
+         if(!IcTimeframe(tfName, tf) || !SymbolSelect(sym, true))
             continue;
-         CMsWatch *w = NULL;
+         CIcWatch *w = NULL;
          for(int k = 0; k < ArraySize(m_watch) && w == NULL; k++)
             if(m_watch[k] != NULL && m_watch[k].sym == sym && m_watch[k].tfName == tfName)
               {
@@ -446,7 +446,7 @@ private:
               }
          if(w == NULL)
            {
-            w = new CMsWatch;
+            w = new CIcWatch;
             w.sym = sym;
             w.tfName = tfName;
             w.tf = tf;
@@ -469,15 +469,15 @@ private:
      }
 
    // The bar, with the tick that made it: the chart's bid and ask lines move with every tick.
-   void              SendBar(CMsWatch *w, const MqlRates &r)
+   void              SendBar(CIcWatch *w, const MqlRates &r)
      {
       MqlTick t;
       string tick = "";
       if(SymbolInfoTick(w.sym, t))
          tick = ",\"bid\":" + DoubleToString(t.bid, w.digits) + ",\"ask\":" + DoubleToString(t.ask, w.digits) +
                 ",\"time\":" + IntegerToString((long)t.time_msc);
-      m_pipe.Send("{\"t\":\"bar\",\"sym\":" + MsJsonQuote(w.sym) + ",\"tf\":" + MsJsonQuote(w.tfName) +
-                  ",\"bar\":" + MsBarRow(r, w.digits) + tick + "}");
+      m_pipe.Send("{\"t\":\"bar\",\"sym\":" + IcJsonQuote(w.sym) + ",\"tf\":" + IcJsonQuote(w.tfName) +
+                  ",\"bar\":" + IcBarRow(r, w.digits) + tick + "}");
      }
 
    void              Bars()
@@ -517,14 +517,14 @@ private:
    void              SetQuotes(const string list)
      {
       string items[];
-      int n = (int)MathMin(MS_MAX_QUOTES, MsLines(list, items));
-      CMsQuote *next[];
+      int n = (int)MathMin(IC_MAX_QUOTES, IcLines(list, items));
+      CIcQuote *next[];
       ArrayResize(next, 0);
       for(int i = 0; i < n; i++)
         {
          if(!SymbolSelect(items[i], true))
             continue;
-         CMsQuote *q = NULL;
+         CIcQuote *q = NULL;
          for(int k = 0; k < ArraySize(m_quotes) && q == NULL; k++)
             if(m_quotes[k] != NULL && m_quotes[k].sym == items[i])
               {
@@ -533,7 +533,7 @@ private:
               }
          if(q == NULL)
            {
-            q = new CMsQuote;
+            q = new CIcQuote;
             q.sym = items[i];
             q.digits = (int)SymbolInfoInteger(q.sym, SYMBOL_DIGITS);
             q.bid = 0;
@@ -558,7 +558,7 @@ private:
      {
       for(int i = 0; i < ArraySize(m_quotes); i++)
         {
-         if(now - m_quotes[i].sentAt < MS_QUOTE_MS)
+         if(now - m_quotes[i].sentAt < IC_QUOTE_MS)
             continue;
          MqlTick t;
          if(!SymbolInfoTick(m_quotes[i].sym, t))
@@ -576,7 +576,7 @@ private:
          m_quotes[i].ask = t.ask;
          m_quotes[i].sentAt = now;
          int d = m_quotes[i].digits;
-         m_pipe.Send("{\"t\":\"quote\",\"sym\":" + MsJsonQuote(m_quotes[i].sym) + ",\"bid\":" + DoubleToString(t.bid, d) +
+         m_pipe.Send("{\"t\":\"quote\",\"sym\":" + IcJsonQuote(m_quotes[i].sym) + ",\"bid\":" + DoubleToString(t.bid, d) +
                      ",\"ask\":" + DoubleToString(t.ask, d) + ",\"time\":" + IntegerToString((long)t.time_msc) +
                      ",\"prev\":" + DoubleToString(m_quotes[i].prevClose, d) + "}");
         }
@@ -604,7 +604,7 @@ private:
          m_balance = b;
          m_equity = e;
          m_pipe.Send("{\"t\":\"account\",\"balance\":" + DoubleToString(b, 2) + ",\"equity\":" + DoubleToString(e, 2) +
-                     ",\"currency\":" + MsJsonQuote(AccountInfoString(ACCOUNT_CURRENCY)) + "}");
+                     ",\"currency\":" + IcJsonQuote(AccountInfoString(ACCOUNT_CURRENCY)) + "}");
         }
      }
 
@@ -612,7 +612,7 @@ private:
      {
       if(text == "")
          return;   // a pulse: it only woke the feed
-      CMsJsonIn j;
+      CIcJsonIn j;
       if(!j.Parse(text))
         {
          Error(0, "Not a request: " + j.Error());
@@ -642,8 +642,8 @@ private:
      }
 
 public:
-                     CMsFeed() : m_lastTry(0), m_lastClock(0), m_balance(-1), m_equity(-1), m_pulsed(false), m_mwCount(-1) {}
-                    ~CMsFeed() { Reset(); }
+                     CIcFeed() : m_lastTry(0), m_lastClock(0), m_balance(-1), m_equity(-1), m_pulsed(false), m_mwCount(-1) {}
+                    ~CIcFeed() { Reset(); }
 
    // One round: connect when needed, answer what arrived, send what changed.
    void              Step()

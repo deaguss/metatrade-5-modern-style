@@ -21,8 +21,8 @@ sealed class Options
         var o = new Options();
         string exeDir = AppDomain.CurrentDomain.BaseDirectory;
         o.Web = Path.Combine(exeDir, "web");
-        o.StoreDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ModernScreen");
-        o.DataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ModernScreen");
+        o.StoreDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "InnaChart");
+        o.DataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "InnaChart");
         for (int i = 0; i < args.Length; i++)
         {
             string a = args[i];
@@ -83,7 +83,7 @@ sealed class Host
         Store = new Store(options.StoreDir);
         web = new WebServer(options.Web, Store, key, OnScreen);
         web.Start(options.Port);
-        Log.Write("Modern Screen started on 127.0.0.1:" + web.Port + ", files from " + options.Web + ".");
+        Log.Write("InnaChart started on 127.0.0.1:" + web.Port + ", files from " + options.Web + ".");
         feed.Connected += t =>
         {
             SendJoined(t.Pid, "watch");
@@ -142,7 +142,7 @@ sealed class Host
     public void Stop()
     {
         if (Glue != null) Glue.Stop();
-        Log.Write("Modern Screen stopped.");
+        Log.Write("InnaChart stopped.");
     }
 
     string Status(int pid)

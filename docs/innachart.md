@@ -1,16 +1,18 @@
-# The Modern Screen
+# InnaChart
+
+![InnaChart](images/innachart-logo.svg)
 
 A roomy, modern chart that sits on MetaTrader 5's chart area, with MetaTrader 5's own candles and
 free drawing tools. MetaTrader 5 keeps running underneath: its menus, Market Watch and Toolbox stay
 where they are.
 
-![The Modern Screen on MetaTrader 5](images/screen.png)
+![InnaChart on MetaTrader 5](images/innachart.png)
 
 ## How it works
 
-- **ModernScreen** is a small *service* inside MetaTrader 5. It sends the terminal's bars and prices
-  (the same bars as MetaTrader 5's charts, in the broker's server time) to ModernScreen.exe.
-- **ModernScreen.exe** runs in the taskbar corner, by the clock. When MetaTrader 5 opens, it opens the
+- **InnaChart** is a small *service* inside MetaTrader 5. It sends the terminal's bars and prices
+  (the same bars as MetaTrader 5's charts, in the broker's server time) to InnaChart.exe.
+- **InnaChart.exe** runs in the taskbar corner, by the clock. When MetaTrader 5 opens, it opens the
   screen on MetaTrader 5's chart area; the screen moves, resizes, minimises and closes with it. Or,
   if you prefer, as a window of its own that you place anywhere (it still opens and closes with
   MetaTrader 5).
@@ -20,10 +22,10 @@ where they are.
 ## Set up (once)
 
 1. Run `install.bat` (see the [README](../README.md#install-about-5-minutes-no-coding)). It asks
-   whether the Modern Screen should start with Windows: answer **Y**, so it is there whenever
+   whether InnaChart should start with Windows: answer **Y**, so it is there whenever
    MetaTrader 5 opens.
 2. In MetaTrader 5's **Navigator** (`Ctrl+N`), right-click **Services** and choose **Refresh**. Then
-   right-click **Services** again, choose **Add Service**, pick **ModernScreen** and press **OK**.
+   right-click **Services** again, choose **Add Service**, pick **InnaChart** and press **OK**.
 
 From then on, opening MetaTrader 5 is enough: the service starts with it, and the screen appears.
 
@@ -97,16 +99,16 @@ colour or a gradient), the grid, the crosshair and a watermark.
 
 The indicator at the top right shows, in milliseconds, MetaTrader 5's ping to your broker's server
 and the round trip from the screen to MetaTrader 5 and back. Its dot is green, amber or red. Click it
-for more: the round trip to ModernScreen.exe, the time from a tick's arrival to its frame on screen,
+for more: the round trip to InnaChart.exe, the time from a tick's arrival to its frame on screen,
 how long one frame takes to draw, the age of the last tick, and the ticks a second.
 
 ## Where things are kept
 
 | What | Where |
 |---|---|
-| Drawings, templates, the layout | `%APPDATA%\ModernScreen` (a `.bak` copy of each file's previous version is kept) |
-| The program | `%LOCALAPPDATA%\ModernScreen\app` |
-| Its log | `%LOCALAPPDATA%\ModernScreen\host.log` |
+| Drawings, templates, the layout | `%APPDATA%\InnaChart` (a `.bak` copy of each file's previous version is kept) |
+| The program | `%LOCALAPPDATA%\InnaChart\app` |
+| Its log | `%LOCALAPPDATA%\InnaChart\host.log` |
 
 The tray icon's menu opens the saved files folder.
 
@@ -114,8 +116,8 @@ The tray icon's menu opens the saved files folder.
 
 | What you see | What to do |
 |---|---|
-| "Waiting for MetaTrader 5" | Add the ModernScreen service (Set up, step 2). In the Navigator, Services > ModernScreen must not show as stopped |
-| The screen does not open with MetaTrader 5 | Is the tray icon there? If not, start **ModernScreen** from `%LOCALAPPDATA%\ModernScreen\app`, and run `install.bat` again to let it start with Windows |
+| "Waiting for MetaTrader 5" | Add the InnaChart service (Set up, step 2). In the Navigator, Services > InnaChart must not show as stopped |
+| The screen does not open with MetaTrader 5 | Is the tray icon there? If not, start **InnaChart** from `%LOCALAPPDATA%\InnaChart\app`, and run `install.bat` again to let it start with Windows |
 | The screen was closed by mistake | Click the tray icon, or press `Ctrl+Alt+M` |
 | "Neither Microsoft Edge nor Google Chrome was found" | The screen is shown in an Edge (or Chrome) app window: install either |
 | The broker ping is red | Your link to the broker is slow; the screen shows MetaTrader 5's own number |
@@ -123,4 +125,4 @@ The tray icon's menu opens the saved files folder.
 ## Remove it
 
 `uninstall.bat` removes it with the rest (it asks first). Your drawings and templates stay in
-`%APPDATA%\ModernScreen` until you delete that folder.
+`%APPDATA%\InnaChart` until you delete that folder.

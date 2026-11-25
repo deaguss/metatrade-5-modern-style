@@ -8,7 +8,10 @@ All notable changes to MetaTrader 5 Modern Style are recorded here. The format f
 
 ### Changed
 
-- The Modern Screen's watchlist is your own list: add symbols, remove them, drag them into your
+- The Modern Screen is now **InnaChart**, with a logo of its own. The program is InnaChart.exe,
+  the service in MetaTrader 5's Navigator is **InnaChart** (add it once in place of ModernScreen),
+  and the saved files are in `%APPDATA%\InnaChart`; `install.bat` carries the old ones over.
+- InnaChart's watchlist is your own list: add symbols, remove them, drag them into your
   order, sort by a column, group them in sections; Last, Chg and Chg% columns; arrow keys step
   through it; its panel can be made wider or narrower by dragging its edge.
 
@@ -16,7 +19,7 @@ All notable changes to MetaTrader 5 Modern Style are recorded here. The format f
 
 ### Added
 
-- **The Modern Screen** ([docs/screen.md](docs/screen.md)): a roomy, modern chart on MetaTrader 5's
+- **The Modern Screen** ([docs/innachart.md](docs/innachart.md)): a roomy, modern chart on MetaTrader 5's
   chart area, with MetaTrader 5's own candles.
   - The **ModernScreen service** sends the terminal's bars (`CopyRates`, in the broker's server time)
     and prices; **ModernScreen.exe** (a tray program, built with the C# compiler that comes with

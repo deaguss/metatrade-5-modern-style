@@ -188,7 +188,7 @@ test('every tool draws and hit-tests without throwing', () => {
 
 test('templates: read, merge and start from', () => {
   const { templates, count, skipped } = readTemplates({
-    format: 'modern-screen-templates',
+    format: 'innachart-templates',
     chart: { 'My chart': { legend: { title: false } } },
     tools: { long: { '10 10': { stopDistance: 1, targetDistance: 1, risk: 25 } }, hline: { 'my base': { line: { color: '#c2185b', width: 2 } } }, nosuch: { a: {} } },
     defaults: { chart: 'My chart', tools: { hline: 'my base', long: 'missing' } },

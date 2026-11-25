@@ -5,13 +5,13 @@
 .DESCRIPTION
     Run it with uninstall.bat (double-click). For each MetaTrader 5 data folder of this Windows user
     it deletes MQL5\Experts\ActionInna, MQL5\Include\ActionInna, MQL5\Scripts\ActionInna,
-    MQL5\Include\ModernScreen and MQL5\Services\ModernScreen. It also closes the Modern Screen,
-    stops it starting with Windows and deletes its program (%LOCALAPPDATA%\ModernScreen). It asks
+    MQL5\Include\InnaChart and MQL5\Services\InnaChart. It also closes InnaChart,
+    stops it starting with Windows and deletes its program (%LOCALAPPDATA%\InnaChart). It asks
     first. Remove the EA from your charts before you run it (or close MetaTrader 5).
 
     Kept: your panel settings and SL/TP history in the Common files folder (Common\Files\ActionInna),
     the log in MQL5\Files\ActionInna, the "ModernStyle" chart template, and the screen's drawings and
-    templates in %APPDATA%\ModernScreen. Delete those by hand if you want them gone too.
+    templates in %APPDATA%\InnaChart. Delete those by hand if you want them gone too.
 
 .PARAMETER Yes
     Do not ask.
@@ -22,9 +22,9 @@ param([switch]$Yes)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_common.ps1')
 
-$Parts = @('Experts\ActionInna', 'Include\ActionInna', 'Scripts\ActionInna', 'Include\ModernScreen', 'Services\ModernScreen')
+$Parts = @('Experts\ActionInna', 'Include\ActionInna', 'Scripts\ActionInna', 'Include\InnaChart', 'Services\InnaChart')
 
-$ScreenApp = Join-Path $env:LOCALAPPDATA 'ModernScreen'
+$ScreenApp = Join-Path $env:LOCALAPPDATA 'InnaChart'
 $RunKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
 
 $terminals = @(Get-Terminals)
@@ -50,10 +50,10 @@ if (-not $Yes) {
         exit 0
     }
 }
-Get-Process -Name ModernScreen -ErrorAction SilentlyContinue | Stop-Process -Force
-if (Get-ItemProperty -Path $RunKey -Name ModernScreen -ErrorAction SilentlyContinue) {
-    Remove-ItemProperty -Path $RunKey -Name ModernScreen
-    Write-Host '  the Modern Screen no longer starts with Windows'
+Get-Process -Name InnaChart -ErrorAction SilentlyContinue | Stop-Process -Force
+if (Get-ItemProperty -Path $RunKey -Name InnaChart -ErrorAction SilentlyContinue) {
+    Remove-ItemProperty -Path $RunKey -Name InnaChart
+    Write-Host '  InnaChart no longer starts with Windows'
 }
 Start-Sleep -Milliseconds 500
 foreach ($path in $found) {

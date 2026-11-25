@@ -1,4 +1,4 @@
-# Modern Screen: design
+# InnaChart: design
 
 A charting screen in the modern style that sits on MetaTrader 5's chart area, with MetaTrader 5's
 own candles. MetaTrader 5 keeps running underneath: its menus, Market Watch and Toolbox stay where
@@ -29,15 +29,15 @@ the drawing tools and the trader's own drawing templates, without limits, on the
 - The long and short position tools work out the lots from the risk with the symbol's own contract
   specification.
 - Drawings are kept per symbol, across timeframes, with undo and redo.
-- **Fast.** Trading is about time. While a screen is open, ModernScreen.exe wakes the feed about
+- **Fast.** Trading is about time. While a screen is open, InnaChart.exe wakes the feed about
   every 2 ms (a sleep in MQL5 lasts about 15 ms), and the feed sends the bar with its tick at
   once; the pipe, the WebSocket (no Nagle delay) and the page pass it straight on; the page draws
-  it on the next frame. Measured on a PC: screen to ModernScreen.exe and back 0.4 ms; screen to
+  it on the next frame. Measured on a PC: screen to InnaChart.exe and back 0.4 ms; screen to
   MT5's feed and back 8 to 15 ms (MT5's own reading of the pipe sets that floor; without the
   wake-ups it was 3 to 31 ms); one frame drawn in under 1 ms. The wake-ups cost about 3% of one
-  processor core in MT5 and as much in ModernScreen.exe, and stop when no screen is open.
+  processor core in MT5 and as much in InnaChart.exe, and stop when no screen is open.
 - **A network indicator** in the top bar, in milliseconds: MT5's own ping to the broker's server,
-  the round trip screen to MT5 and back, the round trip screen to ModernScreen.exe and back, the
+  the round trip screen to MT5 and back, the round trip screen to InnaChart.exe and back, the
   time from a tick's arrival to its frame on screen, the age of the last tick, and ticks a second.
 
 ## Non-goals (phase 1)
@@ -57,17 +57,17 @@ the drawing tools and the trader's own drawing templates, without limits, on the
 
 ```
 MetaTrader 5 (terminal64.exe)
-  ModernScreen service (MQL5)  -- named pipe \\.\pipe\ModernScreen.Feed -->  ModernScreen.exe
+  InnaChart service (MQL5)  -- named pipe \\.\pipe\InnaChart.Feed -->  InnaChart.exe
                                                                               (tray program)
                                    Edge app window  <-- HTTP + WebSocket on 127.0.0.1 --'
                                    (the screen, glued onto MetaTrader 5's chart area)
 ```
 
-- **The feed** is an MQL5 *service* (`mql5/Services/ModernScreen`). A service runs without a chart
+- **The feed** is an MQL5 *service* (`mql5/Services/InnaChart`). A service runs without a chart
   and starts again each time MetaTrader 5 starts, once it was added in the Navigator. It answers
   history requests with `CopyRates`, and sends the last bar of each watched chart and the quotes of
   the watched symbols when they change. It opens the pipe like a file: no DLL, no setting.
-- **The host** is `ModernScreen.exe`, a small tray program in C#, built with the C# compiler that
+- **The host** is `InnaChart.exe`, a small tray program in C#, built with the C# compiler that
   comes with Windows (.NET Framework 4). It starts with Windows (the installer asks first). It
   serves the pipe; learns which MetaTrader 5 a feed belongs to from the pipe's client process;
   serves the screen's files and a WebSocket on `127.0.0.1` only; and opens one Edge app window per
@@ -88,7 +88,7 @@ MetaTrader 5 (terminal64.exe)
   with each store request and as the WebSocket's first message (within 5 seconds); the WebSocket
   also checks that the page comes from the host itself. Without both, nothing is served but the
   page's static files.
-- **Storage.** Drawings, templates and settings are files in `%APPDATA%\ModernScreen`, never in the
+- **Storage.** Drawings, templates and settings are files in `%APPDATA%\InnaChart`, never in the
   repository. The trader's imported templates stay there.
 
 ## Messages
@@ -115,7 +115,7 @@ messaging). The host passes them between the pipe and the screen's WebSocket.
 | screen | `find` | search every symbol of the terminal |
 | screen | `spec` | a symbol's contract specification (for the position tools' lots) |
 | screen | `ping` | measures the round trip to MT5 |
-| screen | `host.ping`, `host.hide`, `host.show`, `host.separate`, `host.glue` | for ModernScreen.exe itself: its round trip; hide or show the screen; a window of its own or glued |
+| screen | `host.ping`, `host.hide`, `host.show`, `host.separate`, `host.glue` | for InnaChart.exe itself: its round trip; hide or show the screen; a window of its own or glued |
 | program | `host`, `host.pong` | to a screen: whether its MT5's feed is linked and the window glued; the answer to `host.ping` |
 | program | `pulse` | to the feed: an empty frame about every millisecond follows while a screen is open, so the feed wakes at once instead of sleeping (Windows rounds a sleep up to about 15 ms) |
 

@@ -43,17 +43,17 @@ the EA onto the chart again, before testing a change.
 5. For anything the ticket shows or sends, test it on a **demo account** and say in the pull
    request what you clicked and what happened.
 
-### The Modern Screen
+### InnaChart
 
 6. `node --test screen/test/*.test.js` (Node.js 18 or later, no packages) runs the page's tests: bars,
    scales, timeframes, the position tools' lots, the drawings (creating, moving, undo) and templates.
-7. `powershell -ExecutionPolicy Bypass -File scripts\build-screen.ps1 -Tests` builds ModernScreen.exe
+7. `powershell -ExecutionPolicy Bypass -File scripts\build-screen.ps1 -Tests` builds InnaChart.exe
    with the C# compiler that comes with Windows and runs its tests (frames, HTTP, WebSocket, the
    server's checks, the store).
 8. To work on the screen without MetaTrader 5, run the program without the glue and a stand-in feed:
 
    ```powershell
-   build\screen\ModernScreen.exe --web screen\web --store build\dev-store --data build\dev-data --no-glue --key devkey-0123456789abcdef --port 8151
+   build\screen\InnaChart.exe --web screen\web --store build\dev-store --data build\dev-data --no-glue --key devkey-0123456789abcdef --port 8151
    node screen\tools\fake-feed.js
    ```
 
@@ -73,8 +73,8 @@ suite in `Scenarios.mqh`. A change to how the ticket or the chart lines behave n
 - MQL5 and PowerShell sources are ASCII only (CI checks it). Build any other character with
   `ShortToString`.
 - Three-space indents in MQL5, as MetaEditor formats them. Free functions start with `Ai`, classes
-  with `CAi`, chart objects with the `AINNA_` prefix. The ModernScreen service's code (in
-  `Include\ModernScreen`) uses `Ms` and `CMs`.
+  with `CAi`, chart objects with the `AINNA_` prefix. The InnaChart service's code (in
+  `Include\InnaChart`) uses `Ic` and `CIc`.
 - Never copy a struct that holds a string or an array: pass it by reference.
 - Guard every division and array index. A runtime error unloads the EA without `OnDeinit`, which
   leaves the chart settings it changed (such as the hidden One-Click panel) behind.

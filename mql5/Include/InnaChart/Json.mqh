@@ -1,17 +1,17 @@
 //+------------------------------------------------------------------+
-//| Modern Screen - JSON for the feed's messages                     |
+//| InnaChart - JSON for the feed's messages                     |
 //+------------------------------------------------------------------+
-#ifndef MODERNSCREEN_JSON_MQH
-#define MODERNSCREEN_JSON_MQH
+#ifndef INNACHART_JSON_MQH
+#define INNACHART_JSON_MQH
 
-#define MS_JSON_STR    0
-#define MS_JSON_NUM    1
-#define MS_JSON_BOOL   2
-#define MS_JSON_NULL   3
-#define MS_JSON_NESTED 4   // an object or array: skipped, the screen's requests have none
+#define IC_JSON_STR    0
+#define IC_JSON_NUM    1
+#define IC_JSON_BOOL   2
+#define IC_JSON_NULL   3
+#define IC_JSON_NESTED 4   // an object or array: skipped, the screen's requests have none
 
 // A number written without trailing zeros: "1.50000" -> "1.5", "2.000" -> "2".
-string MsTrimZeros(const string s)
+string IcTrimZeros(const string s)
   {
    if(StringFind(s, ".") < 0)
       return s;
@@ -28,7 +28,7 @@ string MsTrimZeros(const string s)
   }
 
 // "text" in JSON quotes: quotes, backslashes and control characters escaped.
-string MsJsonQuote(const string s)
+string IcJsonQuote(const string s)
   {
    string out = "\"";
    int n = StringLen(s);
@@ -62,18 +62,18 @@ string MsJsonQuote(const string s)
   }
 
 // A number for JSON. digits < 0 writes up to 8 decimals without trailing zeros.
-string MsJsonNum(const double v, const int digits = -1)
+string IcJsonNum(const double v, const int digits = -1)
   {
    if(!MathIsValidNumber(v))
       return "0";
    if(digits >= 0)
       return DoubleToString(v, digits);
-   return MsTrimZeros(DoubleToString(v, 8));
+   return IcTrimZeros(DoubleToString(v, 8));
   }
 
 // Reads one flat JSON object: strings, numbers, true, false and null. Nested objects and arrays are
 // skipped whole. Anything that isn't valid JSON is refused, with the reason in Error().
-class CMsJsonIn
+class CIcJsonIn
   {
 private:
    string            m_keys[];
@@ -259,7 +259,7 @@ private:
          else
            {
             string v;
-            int kind = MS_JSON_NULL;
+            int kind = IC_JSON_NULL;
             if(!ReadValue(v, kind))
                return false;
            }
@@ -286,28 +286,28 @@ private:
       ushort c = Ch();
       if(c == '"')
         {
-         kind = MS_JSON_STR;
+         kind = IC_JSON_STR;
          return ReadString(val);
         }
       if(c == '-' || (c >= '0' && c <= '9'))
         {
-         kind = MS_JSON_NUM;
+         kind = IC_JSON_NUM;
          return ReadNumber(val);
         }
       if(c == 't' || c == 'f')
         {
-         kind = MS_JSON_BOOL;
+         kind = IC_JSON_BOOL;
          val = (c == 't') ? "true" : "false";
          return Literal(val);
         }
       if(c == 'n')
         {
-         kind = MS_JSON_NULL;
+         kind = IC_JSON_NULL;
          return Literal("null");
         }
       if(c == '{' || c == '[')
         {
-         kind = MS_JSON_NESTED;
+         kind = IC_JSON_NESTED;
          return SkipNested(1);
         }
       return Fail("Expected a value");
@@ -359,7 +359,7 @@ public:
            {
             string k;
             string v;
-            int kind = MS_JSON_NULL;
+            int kind = IC_JSON_NULL;
             if(!ReadString(k))
                return false;
             Space();
@@ -369,7 +369,7 @@ public:
             Space();
             if(!ReadValue(v, kind))
                return false;
-            if(kind != MS_JSON_NESTED)
+            if(kind != IC_JSON_NESTED)
                Put(k, v, kind);
             Space();
             if(Ch() == ',')
@@ -405,13 +405,13 @@ public:
    string            Str(const string k, const string def = "") const
      {
       int i = Find(k);
-      return (i < 0 || m_kinds[i] == MS_JSON_NULL) ? def : m_vals[i];
+      return (i < 0 || m_kinds[i] == IC_JSON_NULL) ? def : m_vals[i];
      }
 
    double            Num(const string k, const double def = 0.0) const
      {
       int i = Find(k);
-      if(i < 0 || m_kinds[i] != MS_JSON_NUM)
+      if(i < 0 || m_kinds[i] != IC_JSON_NUM)
          return def;
       double v = StringToDouble(m_vals[i]);
       return MathIsValidNumber(v) ? v : def;
@@ -421,7 +421,7 @@ public:
    long              Int(const string k, const long def = 0) const
      {
       int i = Find(k);
-      if(i < 0 || (m_kinds[i] != MS_JSON_NUM && m_kinds[i] != MS_JSON_STR))
+      if(i < 0 || (m_kinds[i] != IC_JSON_NUM && m_kinds[i] != IC_JSON_STR))
          return def;
       string v = m_vals[i];
       int n = StringLen(v);
@@ -439,7 +439,7 @@ public:
    bool              Bool(const string k, const bool def = false) const
      {
       int i = Find(k);
-      if(i < 0 || m_kinds[i] != MS_JSON_BOOL)
+      if(i < 0 || m_kinds[i] != IC_JSON_BOOL)
          return def;
       return m_vals[i] == "true";
      }
