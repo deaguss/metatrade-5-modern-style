@@ -10,6 +10,7 @@ import { TIMEFRAMES, FAVORITES, tfLabel, isTimeframe, parseInterval } from './ti
 import { emptyTemplates, readTemplates, mergeTemplates, toolStart, chartStart } from './templates.js';
 import { clone, debounce, drawingsFile, formatPrice, merge, withAlpha } from './util.js';
 import { icon } from './icons.js';
+import { Watchlist } from './watchlist.js';
 import { el, esc, menu, menuBelow, popupBelow, closePopups, colorPicker, dialog, formTab, prompt, confirmBox, toast, dragBy, linePreview } from './ui.js';
 
 const params = new URLSearchParams(location.search);
@@ -625,9 +626,25 @@ function paintCorner() {
 
 // ---- the watchlist ----------------------------------------------------------------------------
 
-right.innerHTML = '<div class="watch-head"><span>Watchlist</span></div><div class="watch-cols"><span>Symbol</span><span>Bid</span><span>Chg%</span></div><div class="watch-list"></div>';
-const watchList = right.querySelector('.watch-list');
-const rows = new Map();
+const saveWatchlist = debounce((items) => store.put('watchlist.json', { version: 1, items }).catch((e) => toast(e.message)), 300);
+const watch = new Watchlist(right, {
+  onPick: (name) => loadChart(name, app.layout.tf),
+  onChange: (items) => {
+    app.watchSaved = true;
+    saveWatchlist(items);
+  },
+  onSymbols: () => subscribeQuotes(),
+  onAdd: () => openSearch('', (r) => watch.add(r.name), 'Add to the watchlist'),
+  onWidth: (px) => {
+    app.layout.watchWidth = px;
+    saveLayout();
+  },
+  digitsOf: (name) => {
+    const s = app.symbols.find((x) => x.name === name);
+    return s ? s.digits : chart.symbol === name ? chart.digits : 5;
+  },
+  marketWatch: () => app.symbols.map((s) => s.name),
+});
 
 function showWatchlist() {
   right.hidden = !app.layout.watchlist;
@@ -635,48 +652,20 @@ function showWatchlist() {
   chart.resize();
 }
 
-function renderWatchlist() {
-  watchList.innerHTML = '';
-  rows.clear();
-  for (const s of app.symbols) {
-    const r = el('div', 'watch-row' + (s.name === app.layout.symbol ? ' on' : ''), '<span class="n" title="' + esc(s.desc || '') + '">' + esc(s.name) + '</span><span class="p">-</span><span class="c">-</span>');
-    r.addEventListener('click', () => loadChart(s.name, app.layout.tf));
-    watchList.appendChild(r);
-    rows.set(s.name, { el: r, p: r.querySelector('.p'), c: r.querySelector('.c'), digits: s.digits, last: NaN });
-    const q = app.quotes.get(s.name);
-    if (q) paintQuote(s.name, q);
-  }
-}
-
-function paintQuote(sym, q) {
-  const r = rows.get(sym);
-  if (!r) return;
-  r.p.textContent = formatPrice(q.bid, r.digits);
-  if (Number.isFinite(r.last) && q.bid !== r.last && r.p.animate) {
-    r.p.animate([{ color: q.bid > r.last ? '#22ab94' : '#ff6b76' }], { duration: 450, easing: 'ease-out' });
-  }
-  r.last = q.bid;
-  if (q.prev > 0) {
-    const ch = ((q.bid - q.prev) / q.prev) * 100;
-    r.c.textContent = (ch >= 0 ? '+' : '') + ch.toFixed(2) + '%';
-    r.c.className = 'c ' + (ch >= 0 ? 'up' : 'down');
-  }
-}
-
 function subscribeQuotes() {
   if (!feed) return;
-  const list = app.symbols.map((s) => s.name);
+  const list = watch.symbols();
   if (app.layout.symbol && !list.includes(app.layout.symbol)) list.push(app.layout.symbol);
   feed.quotes(list);
 }
 
 // ---- symbol search ----------------------------------------------------------------------------
 
-function openSearch(start) {
+function openSearch(start, onPick, title) {
   closePopups();
   const shade = el('div', 'shade');
   const box = el('div', 'dialog search');
-  box.innerHTML = '<div class="search-input">' + icon('search', 18) + '<input spellcheck="false" placeholder="Symbol or name"></div><div class="search-list"></div>';
+  box.innerHTML = '<div class="search-input">' + icon('search', 18) + '<input spellcheck="false" placeholder="' + esc(title || 'Symbol or name') + '"></div><div class="search-list"></div>';
   shade.appendChild(box);
   document.body.appendChild(shade);
   const input = box.querySelector('input');
@@ -690,7 +679,9 @@ function openSearch(start) {
   };
   const pick = (r) => {
     close();
-    if (r) loadChart(r.name, app.layout.tf);
+    if (!r) return;
+    if (onPick) onPick(r);
+    else loadChart(r.name, app.layout.tf);
   };
   const paint = () => {
     list.innerHTML = '';
@@ -829,7 +820,7 @@ async function loadChart(symbol, tf) {
   document.title = 'Modern Screen - ' + symbol + ', ' + tfLabel(tf) + (TERM ? ' #' + TERM : '');
   saveLayout();
   renderTop();
-  for (const [name, r] of rows) r.el.classList.toggle('on', name === symbol);
+  watch.setCurrent(symbol);
   chart.symbol = symbol;
   chart.tf = tf;
   chart.bid = NaN;
@@ -937,7 +928,8 @@ if (feed) {
   });
   feed.on('symbols', (m) => {
     app.symbols = m.list || [];
-    renderWatchlist();
+    if (!app.watchSaved) watch.setItems((m.list || []).map((s) => ({ type: 'symbol', name: s.name })));   // the first time: Market Watch
+    else watch.render();
     renderTop();
     subscribeQuotes();
     if (!app.layout.symbol && app.symbols.length) {
@@ -957,7 +949,7 @@ if (feed) {
   });
   feed.on('quote', (m) => {
     app.quotes.set(m.sym, m);
-    paintQuote(m.sym, m);
+    watch.quote(m);
   });
   feed.on('clock', (m) => noteServerTime(m.now * 1000));
   feed.on('account', (m) => {
@@ -1094,7 +1086,11 @@ window.addEventListener('beforeunload', () => {
 // ---- start ------------------------------------------------------------------------------------
 
 async function start() {
-  const [layout, templates] = await Promise.all([store.getOr('layout.json', null), store.getOr('templates.json', null)]);
+  const [layout, templates, saved] = await Promise.all([store.getOr('layout.json', null), store.getOr('templates.json', null), store.getOr('watchlist.json', null)]);
+  if (saved && Array.isArray(saved.items)) {
+    app.watchSaved = true;
+    watch.setItems(saved.items);
+  }
   if (templates) app.templates = readTemplates(templates).templates;
   app.layout = { ...clone(LAYOUT_DEFAULT), ...(layout || {}) };
   if (!isTimeframe(app.layout.tf)) app.layout.tf = 'H1';
@@ -1102,6 +1098,7 @@ async function start() {
   D.magnet = !!app.layout.magnet;
   D.stay = !!app.layout.stay;
   chart.layout();
+  if (app.layout.watchWidth) watch.setWidth(app.layout.watchWidth);
   showWatchlist();
   renderTop();
   paintWindowBtn();

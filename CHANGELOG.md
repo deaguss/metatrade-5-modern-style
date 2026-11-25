@@ -6,6 +6,12 @@ All notable changes to MetaTrader 5 Modern Style are recorded here. The format f
 
 ## [Unreleased]
 
+### Changed
+
+- The Modern Screen's watchlist is your own list: add symbols, remove them, drag them into your
+  order, sort by a column, group them in sections; Last, Chg and Chg% columns; arrow keys step
+  through it; its panel can be made wider or narrower by dragging its edge.
+
 ## [1.2.0] - 2026-11-25
 
 ### Added

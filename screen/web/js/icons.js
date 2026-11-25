@@ -42,6 +42,7 @@ const I = {
   latest: '<path d="M6 6l6 6-6 6M13 6l6 6-6 6"/>',
   popout: '<rect x="3" y="7" width="13" height="13" rx="1.5"/><path d="M13 3h8v8M21 3l-9 9"/>',
   glue: '<rect x="3" y="3" width="18" height="18" rx="2"/><rect x="7" y="9" width="10" height="8" rx="1" fill="currentColor" fill-opacity=".3"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
   check: '<path d="M5 12l5 5 9-10"/>',
   stay: '<path d="M12 3l2.5 6H21l-5 4 2 7-6-4-6 4 2-7-5-4h6.5z"/>',
 };

@@ -37,7 +37,7 @@ From then on, opening MetaTrader 5 is enough: the service starts with it, and th
 | Zoom | Mouse wheel, or drag the time scale at the bottom |
 | Stretch the prices | Drag the price scale; double-click it for auto scale again (or the **A** button) |
 | Go back to the newest bar | The button at the bottom right, or double-click the time scale |
-| Watchlist | The list icon at the top right: MetaTrader 5's Market Watch with live prices; click a row |
+| Watchlist | The list icon at the top right. It starts with MetaTrader 5's Market Watch and is then your own: **+** adds a symbol, the **x** on a row (or Delete, or a right-click) removes it, drag a row to move it, the **...** menu adds sections. Click a column's title to sort by it. Click a row, or use the arrow keys, to open its chart. Drag the panel's left edge to make it wider or narrower |
 | Hide the screen (MetaTrader 5's charts show) | The **MT5** button at the top right; `Ctrl+Alt+M` or the tray icon shows it again |
 | A window of its own (to move it to another monitor, or maximise it) | The window button next to **MT5**, or the tray menu's **Separate window**. The same button glues it onto MetaTrader 5 again. The choice is remembered |
 
