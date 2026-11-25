@@ -102,7 +102,7 @@ export class Watchlist {
   paintCols() {
     this.cols.innerHTML = '';
     for (const [key, label] of COLS) {
-      const s = this.sort && this.sort.key === key ? (this.sort.dir > 0 ? ' ▲' : ' ▼') : '';
+      const s = this.sort && this.sort.key === key ? (this.sort.dir > 0 ? ' \u25b2' : ' \u25bc') : '';
       const b = el('button', 'watch-col c-' + key, esc(label) + s);
       b.type = 'button';
       b.title = 'Sort by ' + label.toLowerCase() + ' (click again to reverse, a third time for your own order)';

@@ -16,8 +16,9 @@ where they are.
   screen on MetaTrader 5's chart area; the screen moves, resizes, minimises and closes with it. Or,
   if you prefer, as a window of its own that you place anywhere (it still opens and closes with
   MetaTrader 5).
-- Everything stays on your PC. The screen talks to MetaTrader 5 on the same PC only, and it never
-  sends orders: trade with the ActionInna ticket, or MetaTrader 5's own order window.
+- Everything stays on your PC. The screen talks to MetaTrader 5 on the same PC only.
+- Its **order ticket** goes through the ActionInna EA on a chart in MetaTrader 5: the EA works out
+  every number and sends nothing until you press Confirm (see [Trading](#trading)).
 
 ## Set up (once)
 
@@ -28,6 +29,9 @@ where they are.
    right-click **Services** again, choose **Add Service**, pick **InnaChart** and press **OK**.
 
 From then on, opening MetaTrader 5 is enough: the service starts with it, and the screen appears.
+
+3. To trade from InnaChart, keep the ActionInna EA on one chart in MetaTrader 5 (its input **Serve
+   InnaChart's order ticket** is on by default). One chart is enough for every symbol.
 
 ## Using it
 
@@ -102,6 +106,45 @@ and the round trip from the screen to MetaTrader 5 and back. Its dot is green, a
 for more: the round trip to InnaChart.exe, the time from a tick's arrival to its frame on screen,
 how long one frame takes to draw, the age of the last tick, and the ticks a second.
 
+## Trading
+
+The **Trade** button at the top right shows the order ticket, a small window over the chart. Drag it
+by its top bar to put it anywhere; double-click the top bar (or press its dock button) to put it at
+the right edge. While you are not trading it folds to one row: SELL, your risk and lots, and BUY.
+The **+** keeps it open.
+
+1. **Pick the risk**: 1%, 1.5% or 2% (the EA's presets), or type your own in the box after them. The
+   button inside that box switches it between %, lots and money. Under **Risk**, **of equity** says what the % counts
+   from: press it to count from the balance instead (the ticket remembers your choice; until then
+   it follows the EA's setting).
+2. **Set the stop loss** in pips or as a price (**-** and **+** in the box move it by 5 pips; the
+   button after the box changes the unit; **Last** brings back the one used before on the symbol,
+   press again for older ones).
+3. **Set the take profit**: R (2 is twice the stop), pips or a price.
+4. Press **SELL** or **BUY** (the big buttons with the prices; the spread is between them).
+   MetaTrader 5 works out the order and the lines appear on the chart: the entry, the stop loss and
+   the take profit, with the money and pips at each. The ticket shows the lots, the risk, the reward,
+   the risk : reward with the stop and target in pips, the pip value and the margin.
+   Drag the lines to move them; the numbers follow.
+5. Press **Confirm** (it says what it sends, for example "Confirm BUY 0.20 lots"). It works only on a
+   fresh preview (a few seconds old at most); MetaTrader 5 checks everything again with the newest
+   price before it sends. The **x** beside it, or `Esc`, closes the preview without sending anything.
+
+**Pending orders.** Press **Limit / Stop** and set the entry, or drag the entry line. The order type
+follows from where the entry is (a buy below the price is a Buy Limit, above it a Buy Stop).
+
+**Open trades** of the chart's symbol show as dashed lines with their type, lots and profit, and the
+money you lose at the stop loss and make at the take profit:
+
+- drag a stop loss or take profit line (or a pending order's entry) to change it: a card shows the
+  new levels and the money at each, from MetaTrader 5, and changes nothing until **Confirm change**;
+- the **x** on a position closes it, all of it or the lots you type, after **Confirm close**; the **x**
+  on a pending order removes it after you say yes.
+
+The ticket shows **DEMO** or **REAL** for the account, and why it cannot send when something stops
+it (Algo Trading off, MetaTrader 5 not connected). Every order, change and close is written to the
+EA's log, `MQL5\Files\ActionInna\log.txt`.
+
 ## Where things are kept
 
 | What | Where |
@@ -116,6 +159,7 @@ The tray icon's menu opens the saved files folder.
 
 | What you see | What to do |
 |---|---|
+| The ticket says "put the ActionInna EA on a chart" | Drag Expert Advisors > ActionInna onto a chart (Algo Trading on, input **Serve InnaChart's order ticket** on) |
 | "Waiting for MetaTrader 5" | Add the InnaChart service (Set up, step 2). In the Navigator, Services > InnaChart must not show as stopped |
 | The screen does not open with MetaTrader 5 | Is the tray icon there? If not, start **InnaChart** from `%LOCALAPPDATA%\InnaChart\app`, and run `install.bat` again to let it start with Windows |
 | The screen was closed by mistake | Click the tray icon, or press `Ctrl+Alt+M` |

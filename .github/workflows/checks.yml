@@ -76,3 +76,9 @@ jobs:
       - name: InnaChart.exe builds with the C# compiler in Windows, and its tests pass
         shell: pwsh
         run: powershell -ExecutionPolicy Bypass -File scripts\build-screen.ps1 -Tests
+
+      - name: InnaChart.exe end to end, with the stand-in feed and ticket
+        shell: pwsh
+        run: |
+          $env:INNACHART_E2E = '1'
+          node --test screen/test/e2e.test.js

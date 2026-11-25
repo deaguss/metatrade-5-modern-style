@@ -85,6 +85,7 @@ export class Feed {
       const was = this.feedOn;
       this.feedOn = !!msg.feed;
       this.separate = !!msg.separate;
+      this.ticketOn = !!msg.ticket;
       this.emit('host', msg);
       this.emit('feed', this.feedOn);
       if (this.feedOn && !was) this.resend();
@@ -100,7 +101,7 @@ export class Feed {
       if (Number.isFinite(msg.brokerPing)) this.stats.brokerPing = msg.brokerPing;
       if (typeof msg.connected === 'boolean') this.stats.connected = msg.connected;
     }
-    if (msg.id && this.waiting.has(msg.id) && (msg.t === 'bars' || msg.t === 'found' || msg.t === 'spec' || msg.t === 'error' || msg.t === 'pong' || msg.t === 'host.pong')) {
+    if (msg.id && this.waiting.has(msg.id) && (msg.t === 'bars' || msg.t === 'found' || msg.t === 'spec' || msg.t === 'error' || msg.t === 'pong' || msg.t === 'host.pong' || msg.t === 'ticket.reply')) {
       const w = this.waiting.get(msg.id);
       this.waiting.delete(msg.id);
       clearTimeout(w.timer);

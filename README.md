@@ -21,7 +21,8 @@ right on your chart.
 - <img src="docs/images/innachart-logo.svg" alt="" height="20"> **InnaChart**. A roomy, modern chart that sits right on MetaTrader 5's chart area and opens
   with it, with MetaTrader 5's own candles: drawing tools with a floating toolbar, long and short
   positions that work out your lots, your own drawing and chart templates, and a network indicator
-  in milliseconds. See [docs/innachart.md](docs/innachart.md).
+  in milliseconds. Trade from it too: its order ticket goes through the ActionInna EA, with the same
+  preview and Confirm. See [docs/innachart.md](docs/innachart.md).
 - **A tidy window layout**. A short guide to a clean MetaTrader 5 window, and to the drawing tools
   MetaTrader 5 already has, free and without limits: [docs/layout.md](docs/layout.md).
 
@@ -195,8 +196,10 @@ Your choices on the ticket (risk, custom values, position) are saved in
 
 - Try everything on a **demo account** first.
 - With one-click trading off (the default), nothing is sent until you press Confirm.
-- InnaChart never sends orders: it shows MetaTrader 5's prices and your drawings. It talks to
-  MetaTrader 5 on the same PC only (127.0.0.1), with a key made each time it starts.
+- InnaChart's order ticket sends nothing by itself: the ActionInna EA in MetaTrader 5 previews every
+  order, change and close, and acts only when you press Confirm on a fresh preview, checking it all
+  again first. InnaChart talks to MetaTrader 5 on the same PC only (127.0.0.1), with keys made each
+  time it starts.
 - Trading carries risk. This software comes with **no warranty** (see the [licence](LICENSE)); check
   every order before you confirm it.
 

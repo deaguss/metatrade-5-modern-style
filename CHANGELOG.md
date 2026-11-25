@@ -6,6 +6,17 @@ All notable changes to MetaTrader 5 Modern Style are recorded here. The format f
 
 ## [Unreleased]
 
+### Added
+
+- **Trading from InnaChart.** An order ticket on the screen (BUY and SELL with the prices, risk
+  presets or your own risk in %, money or lots, stop loss in pips or price, take profit in R, pips or
+  price, market or pending, Last, the risk % of the equity or the balance) shows MetaTrader 5's
+  preview on the chart, with lines you drag, and sends only on Confirm. Open trades show as lines
+  with their profit and the money at their stop and target: drag them to change the stop, target or a
+  pending entry, or press x to close or remove, each through a card with MetaTrader 5's preview and
+  a Confirm. The ActionInna EA does it all (EA version 1.40, new input **Serve InnaChart's order
+  ticket**), with the same checks as its chart panel.
+
 ### Changed
 
 - The Modern Screen is now **InnaChart**, with a logo of its own. The program is InnaChart.exe,

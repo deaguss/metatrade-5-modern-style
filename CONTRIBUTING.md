@@ -57,8 +57,18 @@ the EA onto the chart again, before testing a change.
    node screen\tools\fake-feed.js
    ```
 
+   The stand-in also answers the order ticket like the EA does (made-up prices, nothing sent
+   anywhere). With `INNACHART_INSTANCE=name` it talks to an InnaChart.exe started with
+   `--instance name` (its own pipes and lock), so an InnaChart already running is left alone.
    The feed prints its process id; open `http://127.0.0.1:8151/?term=<that id>#key=devkey-0123456789abcdef`.
    The page's files are read from `screen\web` as they are: reload the page after a change.
+
+9. `set INNACHART_E2E=1` and `node --test screen/test/e2e.test.js` (on Windows, after
+   `scripts\build-screen.ps1`) run InnaChart.exe on a test instance with the stand-in: the key, the
+   routing of replies, and the ticket's preview, send, change and close.
+10. `bash tests/native/run.sh` also runs `bridge`: every ticket request against the fake MT5 and
+   the brokers' rules, the preview gate (only a fresh, unchanged preview is ever sent) and the
+   pipe's key, with fuzz.
 
 The screen's C# is the version the compiler in Windows understands (C# 5: no `$"..."`, no `?.`, no
 `=>` members). The page is plain JavaScript modules: no build step and no packages.

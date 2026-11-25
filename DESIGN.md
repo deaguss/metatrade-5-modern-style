@@ -73,6 +73,13 @@ only, like the chart under it. Measured the same way:
 | Primary button, its text | `#d1d4dc`, `#111111` | 12.7 |
 | Scale text (the default style) | `#b8b8b8` | 9.7 on the chart |
 | Crosshair tags, white text | `#363a45` | 11.4 |
+| Ticket: SELL not picked, `#ff7d88` text | `rgba(242, 54, 69, 0.1)` on `#1a1a1a` | 6.5 |
+| Ticket: BUY not picked, `#7fb0ff` text | `rgba(41, 98, 255, 0.12)` on `#1a1a1a` | 7.1 |
+| Ticket: SELL picked and Confirm SELL, white text | `#d62838` | 5.0 |
+| Ticket: BUY picked and Confirm BUY, white text | `#2962ff` | 4.9 |
+| Ticket: Confirm while it can't send, `#969aa5` text | `#262626` | 5.4 |
+| Ticket: REAL account badge, white text | `#b22833` | 6.3 |
+| Ticket: warnings | `#f5a524` | 8.2 on the ticket |
 
 The candles and the drawings take the colours the trader chooses (and their templates); the price
 tags pick black or white text, whichever reads better on the tag.

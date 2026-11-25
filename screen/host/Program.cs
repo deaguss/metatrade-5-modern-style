@@ -27,8 +27,8 @@ static class Program
     {
         Options options = Options.Parse(args);
         bool first;
-        using (var mutex = new Mutex(true, @"Local\InnaChart.Host", out first))
-        using (var showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\InnaChart.Show"))
+        using (var mutex = new Mutex(true, options.Named(@"Local\InnaChart.Host"), out first))
+        using (var showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, options.Named(@"Local\InnaChart.Show")))
         {
             if (!first)
             {
@@ -41,7 +41,7 @@ static class Program
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             var host = new Host(options);
-            using (var tray = new Tray(host, showEvent))
+            using (var tray = new Tray(host, showEvent, !options.NoTray))
             {
                 try { host.Start(tray.Ui); }
                 catch (Exception e)
@@ -99,7 +99,7 @@ sealed class Tray : ApplicationContext
     readonly RegisteredWaitHandle showWait;
     public readonly Control Ui = new Control();
 
-    public Tray(Host host, EventWaitHandle showEvent)
+    public Tray(Host host, EventWaitHandle showEvent, bool visible)
     {
         this.host = host;
         Ui.CreateControl();
@@ -129,7 +129,7 @@ sealed class Tray : ApplicationContext
             Icon = MakeIcon(),
             Text = "InnaChart (Ctrl+Alt+M shows or hides it)",
             ContextMenuStrip = menu,
-            Visible = true,
+            Visible = visible,
         };
         icon.MouseClick += (s, e) => { if (e.Button == MouseButtons.Left) Toggle(); };
 

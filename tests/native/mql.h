@@ -296,7 +296,7 @@ struct FakeSym
 struct FakeFile { std::string data; size_t pos = 0; std::string key; bool pipe = false; };
 // Another symbol the broker lists (SymbolsTotal / SymbolName); only the fake's one symbol has prices.
 struct FakeOther { std::string name, description, base, profit; bool visible = false; };
-// The named pipe \\.\pipe\ActionInna.Link as the link program serves it: bytes waiting for the EA,
+// The named pipe \\.\pipe\InnaChart.Ticket as InnaChart.exe serves it: bytes waiting for the EA,
 // and bytes the EA wrote.
 struct FakePipe { bool serving = false, broken = false; std::string toEa, fromEa; };
 
@@ -1093,7 +1093,7 @@ inline bool FolderCreate(const string &, int = 0) { return true; }
 inline bool FileIsExist(const string &name, int flags = 0) { return g_fake.files.count(FakeKey(name, flags)) > 0; }
 inline int FileOpen(const string &name, int flags, ...)
   {
-   if(name.s == "\\\\.\\pipe\\ActionInna.Link")
+   if(name.s == "\\\\.\\pipe\\InnaChart.Ticket")
      {
       if(!g_fake.pipe.serving) { g_fake.lastError = 5004; return INVALID_HANDLE; }
       FakeFile f;

@@ -11,6 +11,8 @@ import { emptyTemplates, readTemplates, mergeTemplates, toolStart, chartStart } 
 import { clone, debounce, drawingsFile, formatPrice, merge, withAlpha } from './util.js';
 import { icon } from './icons.js';
 import { Watchlist } from './watchlist.js';
+import { Ticket } from './ticket.js';
+import { TradeLayer } from './tradelayer.js';
 import { el, esc, menu, menuBelow, popupBelow, closePopups, colorPicker, dialog, formTab, prompt, confirmBox, toast, dragBy, linePreview } from './ui.js';
 
 const params = new URLSearchParams(location.search);
@@ -95,6 +97,9 @@ const settingsBtn = tbButton(icon('gear'), 'Chart settings', () => openChartSett
 const windowBtn = tbButton(icon('popout'), '', () => {
   if (feed) feed.setSeparate(!feed.separate);
 }, 'icon');
+const tradeBtn = tbButton(icon('long') + '<span>Trade</span>', 'The order ticket: BUY and SELL through the ActionInna EA, with a preview and Confirm', () => {
+  if (ticket) ticket.show(ticket.el.hidden);
+}, 'hide-label');
 const hideBtn = tbButton(icon('mt5') + '<span>MT5 charts</span>', 'Hide the screen and show MetaTrader 5\'s own charts (Ctrl+Alt+M shows it again)', () => {
   if (feed) feed.hide();
 }, 'hide-label');
@@ -110,7 +115,7 @@ const logo = el('img', 'logo');
 logo.src = 'img/logo.svg';
 logo.alt = 'InnaChart';
 logo.title = 'InnaChart';
-top.append(logo, symbolBtn, sep(), tfBox, tfMore, sep(), typeBtn, sep(), undoBtn, redoBtn, grow(), netBtn, sep(), watchBtn, settingsBtn, windowBtn, hideBtn);
+top.append(logo, symbolBtn, sep(), tfBox, tfMore, sep(), typeBtn, sep(), undoBtn, redoBtn, grow(), netBtn, sep(), tradeBtn, watchBtn, settingsBtn, windowBtn, hideBtn);
 
 function paintWindowBtn() {
   const separate = !!(feed && feed.separate);
@@ -118,6 +123,8 @@ function paintWindowBtn() {
   windowBtn.title = separate ? 'Glue the screen onto the chart area of MetaTrader 5' :'Make the screen a window of its own (to move it to another monitor)';
   windowBtn.hidden = !feed;
 }
+
+const symbolDesc = (name) => (app.symbols.find((x) => x.name === name) || {}).desc || '';
 
 function renderTop() {
   const sym = app.layout.symbol;
@@ -628,6 +635,19 @@ function paintCorner() {
   latestBtn.hidden = chart.atEnd;
 }
 
+// ---- the order ticket -------------------------------------------------------------------------
+
+const ticket = feed ? new Ticket(document.getElementById('chart-wrap'), {
+  feed,
+  chart,
+  get layout() {
+    return app.layout;
+  },
+  save: () => saveLayout(),
+  onShow: (on) => tradeBtn.classList.toggle('on', on),
+}) : null;
+if (ticket) chart.layers.push(new TradeLayer(ticket));
+
 // ---- the watchlist ----------------------------------------------------------------------------
 
 const saveWatchlist = debounce((items) => store.put('watchlist.json', { version: 1, items }).catch((e) => toast(e.message)), 300);
@@ -827,6 +847,7 @@ async function loadChart(symbol, tf) {
   watch.setCurrent(symbol);
   chart.symbol = symbol;
   chart.tf = tf;
+  if (ticket) ticket.setSymbol(symbol, symbolDesc(symbol));
   chart.bid = NaN;
   chart.ask = NaN;
   const series = new Series(symbol, tf, (app.symbols.find((s) => s.name === symbol) || { digits: 2 }).digits);
@@ -917,7 +938,15 @@ if (feed) {
     paintNet();
     updateNotice();
   });
-  feed.on('host', paintWindowBtn);
+  feed.on('host', (m) => {
+    paintWindowBtn();
+    if (ticket) ticket.setLinked(!!m.ticket);
+  });
+  feed.on('ticket.terminal', (m) => ticket && ticket.onTerminal(m));
+  feed.on('ticket.trades', (m) => {
+    if (ticket) ticket.onTrades(m);
+    chart.invalidate();
+  });
   feed.on('feed', () => {
     paintNet();
     updateNotice();
@@ -935,6 +964,7 @@ if (feed) {
     if (!app.watchSaved) watch.setItems((m.list || []).map((s) => ({ type: 'symbol', name: s.name })));   // the first time: Market Watch
     else watch.render();
     renderTop();
+    if (ticket && app.layout.symbol) ticket.setSymbol(app.layout.symbol, symbolDesc(app.layout.symbol));
     subscribeQuotes();
     if (!app.layout.symbol && app.symbols.length) {
       const gold = app.symbols.find((s) => /^xau/i.test(s.name));
@@ -944,6 +974,7 @@ if (feed) {
   feed.on('bar', (m) => {
     if (m.sym === app.layout.symbol && m.tf === app.layout.tf) {
       chart.live(m.bar, m);
+      if (ticket) ticket.onTick(m.bid, m.ask);
       if (hoverIndex === null) renderLegend();
       if (m.time) {
         app.tickTime = m.time;
@@ -954,6 +985,7 @@ if (feed) {
   feed.on('quote', (m) => {
     app.quotes.set(m.sym, m);
     watch.quote(m);
+    if (ticket && m.sym === app.layout.symbol) ticket.onTick(m.bid, m.ask);
   });
   feed.on('clock', (m) => noteServerTime(m.now * 1000));
   feed.on('account', (m) => {
@@ -1051,6 +1083,12 @@ document.addEventListener('keydown', (e) => {
     chart.invalidate();
     return;
   }
+  if (e.key === 'Escape' && ticket && (ticket.card || ticket.active)) {
+    if (ticket.card) ticket.closeCard();
+    else ticket.cancel();
+    e.preventDefault();
+    return;
+  }
   if (e.altKey && !e.ctrlKey) {
     const k = e.key.toLowerCase();
     const byKey = { t: 'trend', h: 'hline', v: 'vline', f: 'fib', l: 'long', s: 'short' };
@@ -1106,6 +1144,7 @@ async function start() {
   showWatchlist();
   renderTop();
   paintWindowBtn();
+  if (ticket) ticket.applyLayout();
   paintTools();
   paintCorner();
   renderLegend();

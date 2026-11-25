@@ -18,6 +18,8 @@ export class Chart {
     this.g = this.canvas.getContext('2d', { alpha: false });
     this.view = new View();
     this.drawings = new Drawings();
+    this.layers = [];      // drawn after the drawings and hit before them (the ticket's lines)
+    this.layer = null;     // the layer a press went to
     this.series = null;
     this.style = DEFAULT_STYLE;
     this.symbol = '';
@@ -162,6 +164,9 @@ export class Chart {
     const last = s && s.length ? s.last.c : NaN;
     return {
       g: this.g,
+      digits,
+      mid: (y) => this.mid(y),
+      hair: this.hair,
       w: v.w,
       h: v.h,
       barW: v.barW,
@@ -239,6 +244,7 @@ export class Chart {
     this.paintBars(i0, i1);
     this.paintPriceLines();
     this.drawings.draw(c);
+    for (const L of this.layers) L.draw(c);
     this.paintCrosshair();
     g.restore();
 
@@ -563,7 +569,10 @@ export class Chart {
       const v = this.view;
       this.press = { x, y, right: v.right, top: v.top, bottom: v.bottom, barW: v.barW, auto: v.auto };
       if (area === 'plot') {
-        if (this.drawings.down(this.context(), x, y)) this.mode = 'draw';
+        const ctx = this.context();
+        this.layer = this.drawings.tool || this.drawings.pending ? null : this.layers.find((L) => L.down(ctx, x, y)) || null;
+        if (this.layer) this.mode = 'layer';
+        else if (this.drawings.down(ctx, x, y)) this.mode = 'draw';
         else this.mode = 'pan';
       } else if (area === 'price') this.mode = 'scaleP';
       else if (area === 'time') this.mode = 'scaleT';
@@ -574,7 +583,8 @@ export class Chart {
       this.mouse = { x, y, area: this.areaAt(x, y) };
       const v = this.view;
       const p = this.press;
-      if (this.mode === 'draw' || (!this.mode && this.drawings.pending)) {
+      if (this.mode === 'layer') this.layer.move(this.context(), x, y);
+      else if (this.mode === 'draw' || (!this.mode && this.drawings.pending)) {
         this.drawings.move(this.context(), x, y);
         if (!this.mode) cv.style.cursor = 'crosshair';
       } else if (this.mode === 'pan') {
@@ -607,7 +617,10 @@ export class Chart {
         v.right = i + (v.w - keep) / v.barW;
         this.onViewChange();
       } else if (this.series && this.series.length && this.mouse.area === 'plot') {
-        cv.style.cursor = this.drawings.cursorAt(this.context(), x, y) || 'crosshair';
+        const ctx = this.context();
+        let cur = '';
+        if (!this.drawings.tool) for (const L of this.layers) if ((cur = L.cursorAt(ctx, x, y))) break;
+        cv.style.cursor = cur || this.drawings.cursorAt(ctx, x, y) || 'crosshair';
       } else cv.style.cursor = this.mouse.area === 'price' ? 'ns-resize' : this.mouse.area === 'time' ? 'ew-resize' : 'default';
       if (this.mouse.area === 'plot' && this.series && this.series.length) this.onHover(Math.round(v.iOf(x)));
       this.dirty = true;
@@ -616,6 +629,8 @@ export class Chart {
       if (!this.mode) return;
       const { x, y } = pos(e);
       if (this.mode === 'draw') this.drawings.up(this.context(), x, y);
+      if (this.mode === 'layer' && this.layer) this.layer.up(this.context(), x, y);
+      this.layer = null;
       this.mode = null;
       this.press = null;
       this.dirty = true;

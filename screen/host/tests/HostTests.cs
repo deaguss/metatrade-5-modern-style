@@ -214,6 +214,9 @@ static class HostTests
         Equal<string>(null, Routing.ListOf("not json"), "not JSON");
         Equal("M15@XAUUSD\nH1@EURUSD\nD1@BTCUSD", Routing.Union(new[] { "M15@XAUUSD\nH1@EURUSD", "", "H1@EURUSD\nD1@BTCUSD" }), "lists joined, each line once");
         Equal("{\"t\":\"quotes\",\"list\":\"A\\nB\"}", Routing.Request("quotes", "A\nB"), "a joined request");
+        Equal("{\"t\":\"ticket.trades\",\"list\":[]}", Routing.Prefixed("{\"t\":\"trades\",\"list\":[]}", "ticket."), "an EA message for the screens");
+        Equal("{\"t\":\"preview\",\"id\":3}", Routing.Unprefixed("{\"t\":\"ticket.preview\",\"id\":3}", "ticket."), "a screen's request for the EA");
+        Equal<string>(null, Routing.Unprefixed("{\"t\":\"history\",\"id\":3}", "ticket."), "not a ticket request");
         Equal("abc", Routing.KeyOf("{\"t\":\"host.auth\",\"key\":\"abc\"}"), "the key of the first message");
         Equal("", Routing.KeyOf("{\"t\":\"host.auth\",\"key\":5}"), "a key that is not text");
         Equal("", Routing.KeyOf("{"), "not JSON");

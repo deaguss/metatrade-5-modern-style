@@ -136,6 +136,118 @@ button { cursor: pointer; }
 .ftb .swatch-btn i { display: block; width: 18px; height: 4px; border-radius: 2px; background: var(--c); margin-top: -2px; }
 .ftb .swatch-btn span { display: grid; place-items: center; line-height: 0; }
 
+/* ---- the order ticket: laid out as the prototype's floating ticket ---- */
+.tk {
+  position: absolute; z-index: 6; width: 304px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6); font-size: 13px; user-select: none;
+}
+.tk-head { display: flex; align-items: center; gap: 4px; height: 40px; padding: 0 4px 0 6px; cursor: grab; border-bottom: 1px solid #2a2a2a; }
+.tk-head:active { cursor: grabbing; }
+.tk-head .grow { flex: 1; }
+.tk-grip { color: #6b6b6b; display: grid; }
+.tk-sym { font-weight: 700; font-size: 14px; white-space: nowrap; }
+.tk-sub { margin-left: 4px; color: var(--muted); font-size: 12px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tk-acct { margin-right: 2px; font-size: 10px; font-weight: 700; letter-spacing: 0.6px; color: var(--muted); border: 1px solid var(--edge); border-radius: 4px; padding: 1px 5px; flex: none; }
+.tk-acct:empty { display: none; }
+.tk-acct.real { color: #fff; background: #b22833; border-color: #b22833; }
+.tk-head .icon-btn { width: 26px; height: 28px; flex: none; }
+.tk-body { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.tk.collapsed .tk-body { display: none; }
+.tk-mini { display: none; }
+.tk.collapsed .tk-mini { display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px; padding: 8px; align-items: center; }
+.tk-mini-mid { display: flex; flex-direction: column; align-items: center; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.tk-mini-mid b { color: var(--text); }
+
+.tk-sides { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.tk-side {
+  height: 56px; min-width: 0; padding: 0 12px; border: 1px solid; border-radius: 6px; display: flex; flex-direction: column;
+  justify-content: center; align-items: flex-start; text-align: left;
+}
+.tk-side .lbl { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; }
+.tk-side .px { max-width: 100%; font-size: 20px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tk-side.sell { color: #ff7d88; border-color: rgba(242, 54, 69, 0.5); background: rgba(242, 54, 69, 0.1); }
+.tk-side.buy { color: #7fb0ff; border-color: rgba(41, 98, 255, 0.55); background: rgba(41, 98, 255, 0.12); align-items: flex-end; text-align: right; }
+.tk-side.sell:hover { background: rgba(242, 54, 69, 0.18); }
+.tk-side.buy:hover { background: rgba(41, 98, 255, 0.2); }
+.tk-side.sell.on { color: #fff; background: #d62838; border-color: #d62838; }
+.tk-side.buy.on { color: #fff; background: #2962ff; border-color: #2962ff; }
+.tk-side.sm { height: 40px; }
+.tk-side.sm .px { font-size: 15px; }
+.tk-spread {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 0 7px; background: #1a1a1a; border: 1px solid #333;
+  border-radius: 10px; color: var(--muted); font-size: 11px; line-height: 18px; font-variant-numeric: tabular-nums; pointer-events: none;
+}
+
+.tk-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 2px; background: #111; border: 1px solid #2a2a2a; border-radius: 6px; }
+.tk-seg button { height: 26px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font-size: 12px; }
+.tk-seg button.on { background: #2e2e2e; color: #fff; font-weight: 700; }
+.tk-row { display: grid; grid-template-columns: 70px 1fr; align-items: center; gap: 8px; }
+.tk-row > label { color: var(--muted); font-size: 12px; }
+.tk-base { display: block; padding: 0; border: 0; background: transparent; color: var(--accent-text); font-size: 11px; line-height: 1.3; text-align: left; }
+.tk-base:hover { text-decoration: underline; }
+.tk-chips { display: flex; gap: 4px; min-width: 0; }
+.tk-presets { display: contents; }
+.tk-chip { flex: 1 1 0; min-width: 0; height: 30px; padding: 0; border: 1px solid #3a3a3a; border-radius: 4px; background: transparent; color: #cfcfcf; font-size: 12px; }
+.tk-chip:hover { border-color: #5a5a5a; }
+.tk-chip.on, .tk-fld.tk-custom.on { border-color: #dbdbdb; background: #262626; color: #fff; font-weight: 700; }
+.tk-fld { display: flex; align-items: center; height: 30px; min-width: 0; border: 1px solid var(--edge); border-radius: 4px; background: #111; }
+.tk-fld:focus-within { border-color: var(--accent); }
+.tk-custom { flex: 1.7 1 0; }
+.tk-in {
+  flex: 1; width: 100%; min-width: 0; height: 100%; padding: 0; border: 0; outline: 0; background: transparent; text-align: center;
+  font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.tk-custom .tk-in { text-align: right; padding-right: 4px; }
+.tk-st { width: 24px; height: 100%; padding: 0; border: 0; background: transparent; color: #8c8c8c; font-size: 15px; flex: none; }
+.tk-st:hover { color: #fff; background: #222; }
+.tk-cu { height: 100%; padding: 0 6px; border: 0; border-left: 1px solid #3a3a3a; background: transparent; color: #a8a8a8; font-size: 12px; flex: none; }
+.tk-cu:hover { color: #fff; }
+.tk-fline { display: grid; grid-template-columns: minmax(0, 1fr) 46px 36px; gap: 4px; }
+.tk-unit, .tk-last { height: 30px; padding: 0; border: 1px solid #3a3a3a; border-radius: 4px; background: transparent; color: #cfcfcf; font-size: 12px; }
+.tk-last { color: var(--muted); font-size: 11px; }
+.tk-unit:hover, .tk-last:hover { border-color: #5a5a5a; color: #fff; }
+
+.tk-sum { border-top: 1px solid #2a2a2a; padding-top: 8px; }
+.tk-sum .k { color: var(--muted); font-size: 11px; }
+.tk-lotsline { display: flex; justify-content: space-between; align-items: baseline; }
+.tk-lotsline .big { font-size: 20px; font-variant-numeric: tabular-nums; }
+.tk-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 6px; }
+.tk-tiles > div { min-width: 0; padding: 5px 7px; background: #141414; border-radius: 4px; display: flex; flex-direction: column; font-size: 12px; line-height: 1.3; }
+.tk-tiles b, .tk-tiles .k { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tk-tiles b { font-variant-numeric: tabular-nums; }
+.tk .neg { color: var(--bad-text); }
+.tk .pos { color: var(--good); }
+.tk-meta { display: flex; justify-content: space-between; gap: 6px; margin-top: 6px; color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+.tk-meta b { color: var(--text); font-weight: 400; }
+
+.tk-confirm-row { display: flex; gap: 6px; }
+.tk-cbtn { flex: 1; min-width: 0; height: 42px; border: 0; border-radius: 6px; background: #2962ff; color: #fff; font-weight: 700; font-size: 14px; }
+.tk-cbtn.sell { background: #d62838; }
+.tk-cbtn:disabled { background: #262626; color: var(--muted); cursor: default; }
+.tk-xbtn { width: 44px; height: 42px; flex: none; display: grid; place-items: center; border: 1px solid #3a3a3a; border-radius: 6px; background: transparent; color: #cfcfcf; }
+.tk-xbtn:hover { background: var(--hover); }
+.tk-status { font-size: 12px; line-height: 1.4; }
+.tk-status:empty { display: none; }
+.tk-status.l0 { color: var(--muted); }
+.tk-status.l1 { color: var(--warn); }
+.tk-status.l2 { color: var(--bad-text); }
+.tk-status.l3 { color: var(--good); }
+
+/* a change or close card for one open trade */
+.tk-card {
+  position: absolute; z-index: 7; right: 90px; top: 60px; width: 290px; padding: 10px; background: #1a1a1a; border: 1px solid #333;
+  border-radius: 8px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6); font-size: 12px; display: flex; flex-direction: column; gap: 6px;
+}
+.tk-card-head { font-weight: 700; font-size: 13px; }
+.tk-card-row { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; color: var(--muted); }
+.tk-card-row b { color: var(--text); font-weight: 400; font-variant-numeric: tabular-nums; }
+.tk-card-lots { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); }
+.tk-card-lots .num { width: 90px; height: 30px; padding: 0 6px; background: #111; border: 1px solid var(--edge); border-radius: 4px; text-align: right; }
+.tk-card-actions { display: grid; grid-template-columns: 1fr 2fr; gap: 6px; }
+.tk-card-actions .btn { height: 42px; padding: 0 8px; }
+.tk-card .tk-cbtn { background: var(--text); color: #111; }
+.tk-card .tk-cbtn:disabled { background: #262626; color: var(--muted); }
+
 /* ---- watchlist ---- */
 .watch { grid-area: right; position: relative; width: 320px; max-width: 45vw; background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; outline: none; }
 .watch-resize { position: absolute; left: -3px; top: 0; bottom: 0; width: 6px; cursor: ew-resize; z-index: 3; }

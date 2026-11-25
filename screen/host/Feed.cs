@@ -1,4 +1,4 @@
-// The pipe the InnaChart service in each MetaTrader 5 connects to. The pipe tells which process
+// The pipes MetaTrader 5 connects to: the InnaChart service's feed, and the ActionInna EA's ticket. The pipe tells which process
 // is on the other end, and the service runs inside terminal64.exe, so each feed is known by its
 // MetaTrader 5's process id: the screen glued onto that MetaTrader 5 gets that feed.
 using System;
@@ -22,19 +22,20 @@ sealed class Terminal
     static readonly byte[] Pulse = new byte[4];   // an empty frame
 
     // The messages a screen that connects later needs first: the last of each.
-    public static readonly string[] Replayed = { "hello", "symbols", "account", "clock" };
+    readonly string[] replayed;
 
-    public Terminal(int pid, NamedPipeServerStream pipe)
+    public Terminal(int pid, NamedPipeServerStream pipe, string[] replayed)
     {
         Pid = pid;
         this.pipe = pipe;
+        this.replayed = replayed;
     }
 
     public bool Closed { get { return closed; } }
 
     public void Remember(string type, string json)
     {
-        if (Array.IndexOf(Replayed, type) < 0) return;
+        if (Array.IndexOf(replayed, type) < 0) return;
         lock (last) last[type] = json;
     }
 
@@ -43,7 +44,7 @@ sealed class Terminal
         var list = new List<string>();
         lock (last)
         {
-            foreach (string t in Replayed)
+            foreach (string t in replayed)
             {
                 string json;
                 if (last.TryGetValue(t, out json)) list.Add(json);
@@ -134,7 +135,19 @@ sealed class Terminal
 
 sealed class FeedServer
 {
-    public const string PipeName = "InnaChart.Feed";
+    public const string FeedPipe = "InnaChart.Feed";
+    public const string TicketPipe = "InnaChart.Ticket";
+
+    readonly string pipeName;
+    readonly string[] replayed;
+    readonly Func<string> firstFrame;   // sent as soon as a client connects (the ticket's key), or null
+
+    public FeedServer(string pipeName, string[] replayed, Func<string> firstFrame)
+    {
+        this.pipeName = pipeName;
+        this.replayed = replayed;
+        this.firstFrame = firstFrame;
+    }
 
     [DllImport("kernel32.dll", SetLastError = true)]
     static extern bool GetNamedPipeClientProcessId(IntPtr pipe, out uint pid);
@@ -164,14 +177,14 @@ sealed class FeedServer
         lock (terminals) return new List<Terminal>(terminals.Values);
     }
 
-    static NamedPipeServerStream NewPipe()
+    NamedPipeServerStream NewPipe()
     {
         // Only this Windows user may connect. Asynchronous (overlapped) on purpose: on a synchronous
         // pipe Windows runs one I/O at a time, so a write to MT5 would wait behind the read that is
         // always waiting for MT5's next message (up to a tick or a second late).
         var security = new PipeSecurity();
         security.AddAccessRule(new PipeAccessRule(WindowsIdentity.GetCurrent().User, PipeAccessRights.FullControl, AccessControlType.Allow));
-        return new NamedPipeServerStream(PipeName, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances,
+        return new NamedPipeServerStream(pipeName, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances,
             PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.WriteThrough, 1 << 16, 1 << 16, security);
     }
 
@@ -198,7 +211,7 @@ sealed class FeedServer
                 pipe.Dispose();
                 continue;
             }
-            var term = new Terminal((int)pid, pipe);
+            var term = new Terminal((int)pid, pipe, replayed);
             Terminal old;
             lock (terminals)
             {
@@ -209,6 +222,7 @@ sealed class FeedServer
             Log.Write("MT5 " + term.Pid + " connected its feed.");
             var reader = new Thread(() => ReadLoop(term)) { IsBackground = true, Name = "feed " + term.Pid };
             reader.Start();
+            if (firstFrame != null) term.Send(firstFrame());
             if (Connected != null) Connected(term);
         }
     }

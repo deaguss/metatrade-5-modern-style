@@ -51,6 +51,20 @@ static class Routing
         catch (InvalidOperationException) { return ""; }
     }
 
+    // A message with a word put in front of its type: {"t":"trades"... -> {"t":"ticket.trades"...
+    public static string Prefixed(string json, string prefix)
+    {
+        const string head = "{\"t\":\"";
+        return json != null && json.StartsWith(head, StringComparison.Ordinal) ? head + prefix + json.Substring(head.Length) : json;
+    }
+
+    // The same word taken away again, or null when the type does not start with it.
+    public static string Unprefixed(string json, string prefix)
+    {
+        string head = "{\"t\":\"" + prefix;
+        return json != null && json.StartsWith(head, StringComparison.Ordinal) ? "{\"t\":\"" + json.Substring(head.Length) : null;
+    }
+
     // The lines of every list, each once, in the order first seen.
     public static string Union(IEnumerable<string> lists)
     {

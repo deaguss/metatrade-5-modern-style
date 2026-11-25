@@ -40,9 +40,19 @@ the drawing tools and the trader's own drawing templates, without limits, on the
   the round trip screen to MT5 and back, the round trip screen to InnaChart.exe and back, the
   time from a tick's arrival to its frame on screen, the age of the last tick, and ticks a second.
 
-## Non-goals (phase 1)
+## Phase 2: trading from the screen
 
-- Sending orders from the screen. The ActionInna ticket in MetaTrader 5 stays the way to trade.
+- An order ticket on the screen (BUY and SELL, risk presets, stop and target, market or pending),
+  and the open trades of the chart's symbol as lines that can be dragged and closed.
+- Every number and rule stays in the ActionInna EA (`Bridge.mqh`, the same code as its chart panel):
+  the screen asks for a preview and sends a Confirm that names it; the EA checks everything again
+  with the newest prices before it acts, and refuses an unknown, used, old (60 s) or changed preview.
+  The screen's Confirm works only on a preview a few seconds old.
+- The EA serves the ticket over its own pipe, `InnaChart.Ticket`, after checking the key
+  InnaChart.exe wrote for this Windows user. The messages: [innachart-ticket.md](innachart-ticket.md).
+
+## Non-goals (for now)
+
 - Indicators, alerts, several charts at once (later phases).
 - MetaTrader 5 on another computer (a VPS). The screen serves the MetaTrader 5 on the same PC.
 
@@ -136,7 +146,7 @@ Times are the broker's server time in seconds, as MetaTrader 5 shows them.
 ## Phases
 
 1. The screen, glued, with MetaTrader 5's candles, chart style settings, the drawing tools and
-   templates (this document).
+   templates. Done in 1.2.0.
 2. Orders from the screen through the ticket's preview and Confirm; the trader's open trades on the
-   chart.
+   chart. Done in 1.3.0.
 3. Indicators, alerts, several charts.

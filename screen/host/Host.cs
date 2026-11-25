@@ -14,6 +14,14 @@ sealed class Options
     public string StoreDir;
     public string DataDir;
     public bool NoGlue;
+    public bool NoTray;   // for tests: no icon in the taskbar corner
+    public string Instance = "";   // for tests: its own mutex and pipes, apart from the trader's InnaChart
+
+    // A name made apart for a test instance: "InnaChart.Feed" -> "InnaChart.Feed.e2e".
+    public string Named(string name)
+    {
+        return Instance == "" ? name : name + "." + Instance;
+    }
     public string Key;   // for tests: a fixed key instead of a random one
 
     public static Options Parse(string[] args)
@@ -32,6 +40,13 @@ sealed class Options
             else if (a == "--store" && next != null) { o.StoreDir = Path.GetFullPath(next); i++; }
             else if (a == "--data" && next != null) { o.DataDir = Path.GetFullPath(next); i++; }
             else if (a == "--no-glue") o.NoGlue = true;
+            else if (a == "--no-tray") o.NoTray = true;
+            else if (a == "--instance" && next != null)
+            {
+                foreach (char ch in next) if (!char.IsLetterOrDigit(ch)) throw new ArgumentException("--instance takes letters and digits");
+                o.Instance = next;
+                i++;
+            }
             else if (a == "--key" && next != null) { o.Key = next; i++; }
         }
         return o;
@@ -52,7 +67,9 @@ sealed class Host
 
     readonly Options options;
     readonly string key;
-    readonly FeedServer feed = new FeedServer();
+    FeedServer feed;
+    FeedServer ticket;     // the ActionInna EA's order ticket (one chart per MT5 serves it)
+    string ticketKey;
     readonly List<ScreenSession> sessions = new List<ScreenSession>();
     readonly Waiting waiting = new Waiting();
     static readonly string[] Replies = { "bars", "found", "spec", "error", "pong" };
@@ -84,6 +101,7 @@ sealed class Host
         web = new WebServer(options.Web, Store, key, OnScreen);
         web.Start(options.Port);
         Log.Write("InnaChart started on 127.0.0.1:" + web.Port + ", files from " + options.Web + ".");
+        feed = new FeedServer(options.Named(FeedServer.FeedPipe), new[] { "hello", "symbols", "account", "clock" }, null);
         feed.Connected += t =>
         {
             SendJoined(t.Pid, "watch");
@@ -94,10 +112,65 @@ sealed class Host
         feed.Disconnected += t => Broadcast(t.Pid, Status(t.Pid));
         feed.Message += OnFeed;
         feed.Start();
+        StartTicket();
         Glue = new Glue(UrlFor, Path.Combine(options.DataDir, "browser"));
         Glue.Enabled = !options.NoGlue;
         Glue.Separate = ReadSetting("separate") == "1";
         Glue.Start();
+    }
+
+    // The ticket's pipe. Pipe names are shared by every Windows user of the PC, so the EA serves only
+    // a pipe that first sends the key written for this user in MT5's Common files folder.
+    void StartTicket()
+    {
+        var bytes = new byte[24];
+        using (var rng = RandomNumberGenerator.Create()) rng.GetBytes(bytes);
+        ticketKey = BitConverter.ToString(bytes).Replace("-", "").ToLowerInvariant();
+        try
+        {
+            string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MetaQuotes", "Terminal", "Common", "Files", "InnaChart");
+            Directory.CreateDirectory(dir);
+            // A test instance writes its own key file: the EA in MT5 reads only ticket.key.
+            File.WriteAllText(Path.Combine(dir, options.Instance == "" ? "ticket.key" : "ticket." + options.Instance + ".key"), ticketKey, new System.Text.UTF8Encoding(false));
+        }
+        catch (Exception e)
+        {
+            Log.Write("The ticket's key could not be written, so the EA will not serve the ticket: " + e.Message);
+        }
+        ticket = new FeedServer(options.Named(FeedServer.TicketPipe), new[] { "terminal", "trades" }, () => "{\"t\":\"link\",\"key\":\"" + ticketKey + "\"}");
+        ticket.Connected += t => Broadcast(t.Pid, Status(t.Pid));
+        ticket.Disconnected += t => Broadcast(t.Pid, Status(t.Pid));
+        ticket.Message += OnTicket;
+        ticket.Start();
+    }
+
+    // The EA's messages go to the screens as "ticket.<type>"; a reply only to the screen that asked.
+    void OnTicket(Terminal term, string type, string json)
+    {
+        if (type == "beat") return;   // the EA's sign of life: the pipe itself tells us
+        if (type == "reply")
+        {
+            ScreenSession asker;
+            long id;
+            if (waiting.Take(Routing.IdOf(json), out asker, out id)) asker.Ws.SendText(Routing.WithId(Routing.Prefixed(json, "ticket."), id));
+            return;
+        }
+        Broadcast(term.Pid, Routing.Prefixed(json, "ticket."));
+    }
+
+    // A screen's request for the ticket, on to its MT5's EA with an id of the program's own.
+    void TicketRequest(ScreenSession session, string msg, WsConnection ws)
+    {
+        long id = Routing.IdOf(msg);
+        if (id <= 0) return;
+        Terminal tk = ticket.Get(session.Pid);
+        if (tk == null)
+        {
+            ws.SendText("{\"t\":\"ticket.reply\",\"id\":" + id + ",\"ok\":false,\"err\":\"Put the ActionInna EA on a chart in MetaTrader 5, with Serve InnaChart's order ticket on, to trade from here\"}");
+            return;
+        }
+        string bare = Routing.Unprefixed(Routing.WithId(msg, waiting.Add(session, id)), "ticket.");
+        if (bare != null) tk.Send(bare);
     }
 
     // This program's own settings (one "name=value" a line), next to its log.
@@ -148,8 +221,10 @@ sealed class Host
     string Status(int pid)
     {
         bool feedOn = feed.Get(pid) != null;
+        bool ticketOn = ticket != null && ticket.Get(pid) != null;
         bool separate = Glue != null && Glue.Separate;
-        return "{\"t\":\"host\",\"pid\":" + pid + ",\"feed\":" + (feedOn ? "true" : "false") + ",\"separate\":" + (separate ? "true" : "false") + "}";
+        return "{\"t\":\"host\",\"pid\":" + pid + ",\"feed\":" + (feedOn ? "true" : "false") + ",\"ticket\":" + (ticketOn ? "true" : "false") +
+            ",\"separate\":" + (separate ? "true" : "false") + "}";
     }
 
     // A reply goes to the screen that asked, with its own id back; everything else to every screen
@@ -215,12 +290,15 @@ sealed class Host
             Terminal term = feed.Get(pid);
             ws.SendText(Status(pid));
             if (term != null) foreach (string json in term.Snapshot()) ws.SendText(json);
+            Terminal tk = ticket.Get(pid);
+            if (tk != null) foreach (string json in tk.Snapshot()) ws.SendText(Routing.Prefixed(json, "ticket."));
             string msg;
             while ((msg = ws.Receive()) != null)
             {
                 if (msg.Length > MaxRequest) continue;
                 string type = Frames.TypeOf(msg);
                 if (type.StartsWith("host.", StringComparison.Ordinal)) { HostRequest(pid, type, msg, ws); continue; }
+                if (type.StartsWith("ticket.", StringComparison.Ordinal)) { TicketRequest(session, msg, ws); continue; }
                 if (type == "") continue;
                 if (type == "watch" || type == "quotes")
                 {

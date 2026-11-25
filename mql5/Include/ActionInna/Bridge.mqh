@@ -340,6 +340,8 @@ private:
       o.Num("margin", AccountInfoDouble(ACCOUNT_MARGIN));
       o.Num("freeMargin", AccountInfoDouble(ACCOUNT_MARGIN_FREE));
       o.Open("list", true);
+      AiSpec s;
+      string specOf = "";
       for(int i = 0; i < n; i++)
         {
          int d = AiPriceDigits(l[i].symbol);
@@ -354,6 +356,21 @@ private:
          o.Num("sl", l[i].sl, d);
          o.Num("tp", l[i].tp, d);
          o.Num("profit", l[i].profit);
+         // The money at the stop and at the target, after commission, as the change card values them.
+         if(l[i].sl > 0.0 || l[i].tp > 0.0)
+           {
+            if(specOf != l[i].symbol)
+              {
+               AiLoadSpec(l[i].symbol, (int)m_cfg.pipMode, s);
+               specOf = l[i].symbol;
+              }
+            double comm = MathMax(m_cfg.commissionRT, 0.0) * l[i].lots;
+            double pnl = 0.0;
+            if(l[i].sl > 0.0 && AiPnlAt(s, l[i].side, l[i].lots, l[i].open, l[i].sl, pnl))
+               o.Num("slMoney", pnl - comm);
+            if(l[i].tp > 0.0 && AiPnlAt(s, l[i].side, l[i].lots, l[i].open, l[i].tp, pnl))
+               o.Num("tpMoney", pnl - comm);
+           }
          o.Int("digits", MathMax(d, 0));
          if(l[i].isOrder)
            {
