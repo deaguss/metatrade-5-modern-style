@@ -40,7 +40,7 @@ $Mql5 = Join-Path $Repo 'mql5'
 $BuildDir = Join-Path $Repo 'build'
 New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
 
-$Sources = @('Experts\ActionInna\ActionInna.mq5', 'Scripts\ActionInna\ModernStyle.mq5')
+$Sources = @('Experts\ActionInna\ActionInna.mq5', 'Scripts\ActionInna\ModernStyle.mq5', 'Services\ModernScreen\ModernScreen.mq5')
 if ($Tests) { $Sources += 'Scripts\ActionInna\ActionInnaTests.mq5' }
 
 $failed = 0

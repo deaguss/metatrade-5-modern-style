@@ -18,10 +18,14 @@ right on your chart.
 - **ModernStyle script**. One click gives your chart a modern look: a near-black background, white
   and blue candles, no grid, and a price scale you can drag. It saves the look as a template, so any
   chart can use it.
+- **The Modern Screen**. A roomy, modern chart that sits right on MetaTrader 5's chart area and opens
+  with it, with MetaTrader 5's own candles: drawing tools with a floating toolbar, long and short
+  positions that work out your lots, your own drawing and chart templates, and a network indicator
+  in milliseconds. See [docs/screen.md](docs/screen.md).
 - **A tidy window layout**. A short guide to a clean MetaTrader 5 window, and to the drawing tools
   MetaTrader 5 already has, free and without limits: [docs/layout.md](docs/layout.md).
 
-Everything runs inside MetaTrader 5, with its own prices and order execution. Nothing is sent over
+Everything runs on your PC, with MetaTrader 5's own prices and order execution. Nothing is sent over
 the internet by these programs.
 
 ## Install (about 5 minutes, no coding)
@@ -32,8 +36,9 @@ You need **MetaTrader 5 for Windows**, opened at least once. Use a **demo accoun
    and extract it to a folder, for example `Downloads\metatrade-5-modern-style`.
 2. **Install.** In that folder, double-click **install.bat**.
    - If Windows says "Windows protected your PC", click **More info**, then **Run anyway**.
-   - It finds every MetaTrader 5 on your PC, copies the programs into it and compiles them. It ends
-     with **Done** and the next steps. Press any key to close the window.
+   - It finds every MetaTrader 5 on your PC, copies the programs into it and compiles them. Then it
+     installs the Modern Screen and asks whether it should start with Windows: press **Y** and
+     Enter. It ends with **Done** and the next steps. Press any key to close the window.
 3. **Refresh MetaTrader 5.** Open the **Navigator** (`Ctrl+N`), right-click **Expert Advisors** and
    choose **Refresh**. (Or simply restart MetaTrader 5.)
 4. **Turn on Algo Trading.** Click the **Algo Trading** button in the toolbar, so it turns green.
@@ -42,6 +47,10 @@ You need **MetaTrader 5 for Windows**, opened at least once. Use a **demo accoun
    then press **OK**. The ticket appears on the chart.
 6. **Add the look (optional).** Drag **Scripts > ActionInna > ModernStyle** onto the chart and press
    **OK**. To give every open chart the look, set **Apply to every open chart** to `true` first.
+7. **Turn on the Modern Screen (once).** In the Navigator, right-click **Services** and choose
+   **Refresh**; right-click **Services** again, choose **Add Service**, pick **ModernScreen** and
+   press **OK**. The screen fills MetaTrader 5's chart area with its own candles. From then on it
+   opens with MetaTrader 5. The **MT5** button at its top right (or `Ctrl+Alt+M`) hides and shows it.
 
 MetaTrader 5 allows one Expert Advisor per chart, so use a chart without another one on it.
 
@@ -179,12 +188,15 @@ Your choices on the ticket (risk, custom values, position) are saved in
 | The One-Click panel is gone after a crash | Right-click the chart > One Click Trading (`Alt+T`) |
 | MetaTrader 5's own trade lines are gone | The ticket draws its own while it runs; they come back when it is removed. After a crash: `F8` > Show > Show trade levels |
 | Still running the old version after an update | Remove the ticket from the chart and add it again, or restart MetaTrader 5 |
+| The Modern Screen says "Waiting for MetaTrader 5" | Add the ModernScreen service (step 7 above); more in [docs/screen.md](docs/screen.md#troubleshooting) |
 | Anything else | The log, `MQL5\Files\ActionInna\log.txt` (File > Open Data Folder) |
 
 ## Safety
 
 - Try everything on a **demo account** first.
 - With one-click trading off (the default), nothing is sent until you press Confirm.
+- The Modern Screen never sends orders: it shows MetaTrader 5's prices and your drawings. It talks to
+  MetaTrader 5 on the same PC only (127.0.0.1), with a key made each time it starts.
 - Trading carries risk. This software comes with **no warranty** (see the [licence](LICENSE)); check
   every order before you confirm it.
 
@@ -196,6 +208,11 @@ mql5/
   Include/ActionInna/                 the ticket (Panel, Ui), risk and lots (RiskCalc), orders
                                       (Executor), chart lines (PreviewLines, OrderLines), memory
   Scripts/ActionInna/                 ModernStyle, and ActionInnaTests with its scenario suites
+  Services/ModernScreen/              the Modern Screen's feed (Include/ModernScreen holds its code)
+screen/
+  host/                               ModernScreen.exe (C#): the pipe, the local web server, the glue
+  web/                                the Modern Screen's page: chart, drawing tools, templates
+  test/, tools/                       its tests (Node.js) and a stand-in feed for working without MT5
 tests/native/                         the same code compiled with g++ against a fake terminal
 scripts/                              install, uninstall, build and link-mt5 (developer set-up)
 docs/                                 the layout guide and images
@@ -204,6 +221,9 @@ prototype/                            the browser prototype of the ticket and th
 
 - Build: `powershell -ExecutionPolicy Bypass -File scripts\build.ps1 -Tests` (needs MetaTrader 5).
 - Tests without MetaTrader 5: `bash tests/native/run.sh` (Git Bash, Node.js, g++).
+- The Modern Screen: `node --test screen/test/*.test.js`, and
+  `powershell -ExecutionPolicy Bypass -File scripts\build-screen.ps1 -Tests` for ModernScreen.exe.
+  [CONTRIBUTING.md](CONTRIBUTING.md) shows how to run it with a stand-in feed.
 - Look at the ticket without MetaTrader 5: `bash tests/native/preview.sh`, then open the pages in
   `tests/native/out/preview`.
 - Design decisions and colour contrast: [DESIGN.md](DESIGN.md). How to contribute:

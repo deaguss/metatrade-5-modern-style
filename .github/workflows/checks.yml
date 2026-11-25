@@ -17,10 +17,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: MQL5 and PowerShell sources are ASCII only
+      - name: Sources are ASCII only
         run: |
-          if LC_ALL=C grep -rnP --include='*.mq5' --include='*.mqh' --include='*.ps1' '[^\x00-\x7F]' mql5 scripts; then
-            echo "::error::Non-ASCII characters found (MetaEditor and Windows PowerShell 5.1 may misread them)."
+          if LC_ALL=C grep -rnP --include='*.mq5' --include='*.mqh' --include='*.ps1' --include='*.cs' --include='*.js' --include='*.html' --include='*.css' '[^\x00-\x7F]' mql5 scripts screen; then
+            echo "::error::Non-ASCII characters found (MetaEditor, Windows PowerShell 5.1 and the C# compiler in Windows may misread them)."
             exit 1
           fi
 
@@ -52,3 +52,27 @@ jobs:
 
       - name: Native tests (worked examples, generated suites, broker profiles, ticket scenarios and fuzz)
         run: bash tests/native/run.sh
+
+  screen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: The screen's page parses
+        run: for f in screen/web/js/*.js screen/tools/*.js; do node --check "$f"; done
+
+      - name: The screen's tests (bars, scales, position tools, drawings, templates)
+        run: node --test screen/test/*.test.js
+
+  screen-host:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ModernScreen.exe builds with the C# compiler in Windows, and its tests pass
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File scripts\build-screen.ps1 -Tests

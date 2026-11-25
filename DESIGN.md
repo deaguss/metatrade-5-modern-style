@@ -54,3 +54,25 @@ Text needs 4.5:1 and control edges 3:1 (WCAG 2.x, computed, not estimated).
 
 The theme follows the chart background (input "Theme"). The values live in `AiBuildTheme`
 (`mql5/Include/ActionInna/Ui.mqh`).
+
+## The Modern Screen's colours
+
+The screen (`screen/web/css/screen.css`, the chart's defaults in `screen/web/js/style.js`) is dark
+only, like the chart under it. Measured the same way:
+
+| Role | Colour | Contrast |
+|---|---|---|
+| Chart background / bars / dialogs / hover | `#0f0f0f` / `#141414` / `#1e1e1e` / `#2a2a2a` | |
+| Text | `#d1d4dc` | 12.9 on the chart, 9.7 on hover |
+| Muted text | `#969aa5` | 6.8 on the chart, 5.1 on hover |
+| Chosen timeframe and tool | `#5d8dff` | 5.9 on the bars, 4.6 on hover |
+| Rising (watchlist, legend) | `#22ab94` | 6.7 on the chart, 5.0 on hover |
+| Falling, and "Remove" in menus | `#ff6b76` | 7.0 on the chart, 5.2 on hover |
+| Field, button and swatch edges | `#6b6b6b` | 3.6 on the chart, 3.1 on dialogs |
+| Accent buttons (A, on), white text | `#2962ff` | 4.9 |
+| Primary button, its text | `#d1d4dc`, `#111111` | 12.7 |
+| Scale text (the default style) | `#b8b8b8` | 9.7 on the chart |
+| Crosshair tags, white text | `#363a45` | 11.4 |
+
+The candles and the drawings take the colours the trader chooses (and their templates); the price
+tags pick black or white text, whichever reads better on the tag.

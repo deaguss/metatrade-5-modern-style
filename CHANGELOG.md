@@ -6,6 +6,34 @@ All notable changes to MetaTrader 5 Modern Style are recorded here. The format f
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-25
+
+### Added
+
+- **The Modern Screen** ([docs/screen.md](docs/screen.md)): a roomy, modern chart on MetaTrader 5's
+  chart area, with MetaTrader 5's own candles.
+  - The **ModernScreen service** sends the terminal's bars (`CopyRates`, in the broker's server time)
+    and prices; **ModernScreen.exe** (a tray program, built with the C# compiler that comes with
+    Windows) opens the screen when MetaTrader 5 opens, glued onto its chart area (it moves,
+    resizes, minimises and closes with it), or as a window of its own. `Ctrl+Alt+M` hides and shows it.
+  - Pan, zoom, a price scale that can be dragged, a crosshair, every timeframe, symbol search over
+    the terminal's symbols, a watchlist of the Market Watch symbols.
+  - Drawing tools: lines, rays, horizontal and vertical lines, a parallel channel, Fibonacci
+    retracement, rectangles, triangles, paths, arrows, text, price and date ranges, and long and short
+    positions that work out the lots from the risk with the symbol's own contract specification.
+    A floating toolbar on the selected drawing, undo and redo, copy and paste, magnet, lock and hide.
+    Right-click a tool to draw with one of its saved templates (a long position's "150 150", say),
+    or right-click a drawing to apply one.
+  - Chart settings (candles, background, grid, scales, crosshair, last price line with a countdown)
+    and templates for the chart and for each drawing tool, with import and export.
+  - A network indicator in milliseconds: MetaTrader 5's ping to the broker, the round trip to
+    MetaTrader 5, the time from a tick to the screen.
+  - Fast: while a screen is open the program wakes the service about every 2 ms; a round trip from
+    the screen to MetaTrader 5 takes 8 to 15 ms. Lines and candles are drawn on the screen's own
+    pixels, so they stay sharp at 125% display scale and the like.
+  - Everything stays on the PC: 127.0.0.1 only, with a key made at each start.
+- `install.bat` installs the service and the screen, and asks whether the screen starts with Windows.
+
 ## [1.1.0] - 2026-11-25
 
 ### Changed
@@ -58,7 +86,8 @@ First public release.
 - A guide to a clean MetaTrader 5 window layout and its drawing tools (`docs/layout.md`).
 - A browser prototype of the ticket and the chart style (`prototype/`).
 
-[Unreleased]: https://github.com/deaguss/metatrade-5-modern-style/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/deaguss/metatrade-5-modern-style/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/deaguss/metatrade-5-modern-style/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/deaguss/metatrade-5-modern-style/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/deaguss/metatrade-5-modern-style/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/deaguss/metatrade-5-modern-style/releases/tag/v1.0.0

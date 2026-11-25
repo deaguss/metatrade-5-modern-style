@@ -1,0 +1,9 @@
+{
+  "name": "modern-screen",
+  "private": true,
+  "description": "The Modern Screen's page. No dependencies: the tests use Node's own test runner.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}
