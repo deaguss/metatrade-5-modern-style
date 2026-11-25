@@ -1028,6 +1028,35 @@ static std::string LabelOverlap()
    return "";
   }
 
+// A chart just tall enough for the full ticket gets it, also when the EA starts on it. The first
+// guess at the ticket's height was too tall, and the slim layout it then took never measured the
+// full one again, so the ticket stayed slim.
+static void ScenarioShortChart()
+  {
+   Setup("the full ticket on a chart just tall enough for it");
+   int full = IntOf(kP + "XBG#r", OBJPROP_YSIZE) - 12;   // the picture has a 6 px shadow margin all round
+   g_app.Deinit(REASON_REMOVE);
+   g_fake.Reset();
+   _Symbol = string(g_fake.sym.name);
+   g_fake.chartH = full + 12;
+   static CAiApp fresh;   // a new EA, as MT5 makes when it is put on a chart
+   fresh.cfg = DefaultCfg();
+   fresh.Init();
+   auto tick = [&]() { for(int i = 0; i < 3; i++) { Advance(200); fresh.Timer(); } };
+   auto resized = [&](int h) { g_fake.chartH = h; int64_t l = 0; double d = 0; string s(""); fresh.ChartEvent(CHARTEVENT_CHART_CHANGE, l, d, s); tick(); };
+   tick();
+   EXPECT(Shown(kP + "SELL#t2"), "started on it, the EA shows the full ticket (chart " + std::to_string(g_fake.chartH) + " px, ticket " +
+          std::to_string(full) + " px)");
+   resized(full - 40);
+   EXPECT(!Shown(kP + "SELL#t2") && Shown(kP + "MSELL#tx"), "made shorter, it takes the slim layout");
+   resized(full + 7);
+   EXPECT(!Shown(kP + "SELL#t2"), "1 px short of the full ticket and its 8 px margin, it stays slim");
+   resized(full + 8);
+   EXPECT(Shown(kP + "SELL#t2"), "and goes back to the full one as soon as it fits: its height is known while slim");
+   EXPECT(full <= 440, "the full ticket is no taller than the old panel (440 px): " + std::to_string(full));
+   fresh.Deinit(REASON_REMOVE);
+  }
+
 // No two words on the ticket run into each other, with narrow or wide text, in every state.
 static void ScenarioNoOverlap()
   {
@@ -1542,6 +1571,7 @@ int main(int argc, char **argv)
    ScenarioPanelPicture();
    ScenarioTicketControls();
    ScenarioNoOverlap();
+   ScenarioShortChart();
    ScenarioOtherEas();
    ScenarioPreviewAndCard();
    ScenarioConfirmHoldsPreview();

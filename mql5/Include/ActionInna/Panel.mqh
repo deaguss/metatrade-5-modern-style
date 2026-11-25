@@ -96,6 +96,28 @@ struct AiView
 // An en dash for the - buttons: a hyphen is too short to read as minus. (Sources stay ASCII.)
 #define AI_DASH ShortToString(0x2013)
 
+// The full ticket's rows, top to bottom, in unscaled pixels. Render lays them out and FullHeight
+// adds them up, so the panel knows whether the full ticket fits the chart without drawing it.
+#define AI_HEAD_H       36   // header: grip, symbol, menu, dock, collapse
+#define AI_TOP_GAP      8
+#define AI_SIDE_H       50   // SELL and BUY
+#define AI_SIDE_GAP     8
+#define AI_SEG_H        28   // Market | Limit / Stop
+#define AI_SEG_GAP      6
+#define AI_ROW_H        26   // entry, risk, stop loss and take profit rows
+#define AI_ROW_GAP      5
+#define AI_LEVELS_GAP   8    // after the take profit row
+#define AI_DIV_GAP      6    // after the line above the money
+#define AI_LOTS_H       22
+#define AI_TILE_H       44
+#define AI_TILE_GAP     5
+#define AI_META_H       16   // pip value and margin: one row, or two when long
+#define AI_COMM_H       17
+#define AI_META_GAP     6
+#define AI_CONFIRM_H    38
+#define AI_CONFIRM_GAP  5
+#define AI_STATUS_H     31   // two lines of status
+
 // Object names are AI_P_<TOKEN>#<part>. Clickable tokens map to commands; tokens starting with X
 // are decoration. The panel and the card are surfaces (CAiUi.BeginSurface): their backgrounds are
 // painted into one picture each, and a click on the picture is matched to a control by position.
@@ -222,9 +244,9 @@ private:
       int in = ui.S(8);
       int fit = tw - 2 * in;
       ui.Shape(tx, ty, tw, th, ui.S(4), t.tile, t.tile);
-      ui.Label(AI_P + "XT" + key + "#k", tx + in, ty + ui.S(6), label, t.muted, fs - 1, ANCHOR_LEFT_UPPER, false);
-      ui.Label(AI_P + "XT" + key + "#v", tx + in, ty + ui.S(18), ui.Fit(value, fit, fs, true), vc, fs, ANCHOR_LEFT_UPPER, true);
-      ui.Label(AI_P + "XT" + key + "#s", tx + in, ty + ui.S(34), ui.Fit(sub, fit, fs - 1), t.muted, fs - 1, ANCHOR_LEFT_UPPER, false);
+      ui.Label(AI_P + "XT" + key + "#k", tx + in, ty + ui.S(5), label, t.muted, fs - 1, ANCHOR_LEFT_UPPER, false);
+      ui.Label(AI_P + "XT" + key + "#v", tx + in, ty + ui.S(17), ui.Fit(value, fit, fs, true), vc, fs, ANCHOR_LEFT_UPPER, true);
+      ui.Label(AI_P + "XT" + key + "#s", tx + in, ty + ui.S(30), ui.Fit(sub, fit, fs - 1), t.muted, fs - 1, ANCHOR_LEFT_UPPER, false);
      }
 
    // A whole-row toggle: a box that is filled when on, plus the words On/Off, so the state never
@@ -251,7 +273,7 @@ private:
       if(showConfirm)
         {
          int xw = ui.S(44);
-         int ch2 = ui.S(42);
+         int ch2 = ui.S(AI_CONFIRM_H);
          int confW = v.showCancel ? cw - xw - ui.S(6) : cw;
          color cbg = v.confirmEnabled ? ((v.side == AI_BUY) ? t.buyFill : t.sellFill) : t.chip;
          color cbd = v.confirmEnabled ? cbg : t.inputBorder;
@@ -259,7 +281,7 @@ private:
          Control(AI_CMD_CONFIRM, AI_P + "CONFIRM", cx, cy, confW, ch2, v.confirmText, cbg, cbd, ctx, fs + 1, true, ui, ui.S(6));
          if(v.showCancel)
             Control(AI_CMD_CANCEL, AI_P + "CANCEL", cx + confW + ui.S(6), cy, xw, ch2, "X", t.chip, t.inputBorder, t.text, fs, true, ui, ui.S(6));
-         cy += ch2 + ui.S(6);
+         cy += ch2 + ui.S(AI_CONFIRM_GAP);
         }
       color sc = t.muted;
       if(v.statusLevel == 1)
@@ -272,8 +294,33 @@ private:
       string l2 = "";
       Wrap(v.status, cw, fs - 1, ui, l1, l2);
       ui.Label(AI_P + "XST1#t", cx, cy, l1, sc, fs - 1, ANCHOR_LEFT_UPPER, false);
-      ui.Label(AI_P + "XST2#t", cx, cy + ui.S(15), l2, sc, fs - 1, ANCHOR_LEFT_UPPER, false);
-      return cy + ui.S(34);
+      ui.Label(AI_P + "XST2#t", cx, cy + ui.S(14), l2, sc, fs - 1, ANCHOR_LEFT_UPPER, false);
+      return cy + ui.S(AI_STATUS_H);
+     }
+
+   // Whether pip value and margin take two rows: long amounts would run into each other on one.
+   bool              MetaTwoRows(const AiView &v, const int cw, CAiUi &ui)
+     {
+      int mf = ui.fontSize - 1;
+      int pipW = ui.TextWidth("Pip value", mf) + ui.S(5) + ui.TextWidth(v.pipValue, mf, true);
+      int marginW = ui.TextWidth("Margin", mf) + ui.S(5) + ui.TextWidth(v.marginShort, mf, true) + ui.S(4) + ui.TextWidth(v.freeShort, mf);
+      return (pipW + ui.S(12) + marginW > cw);
+     }
+
+   // The full ticket's height, without its menu, as Render lays it out (the AI_ rows above).
+   int               FullHeight(const AiView &v, CAiUi &ui)
+     {
+      int rows = ui.S(AI_ROW_H);
+      int hgt = ui.S(AI_HEAD_H) + ui.S(AI_TOP_GAP) + ui.S(AI_SIDE_H) + ui.S(AI_SIDE_GAP) + ui.S(AI_SEG_H) + ui.S(AI_SEG_GAP);
+      if(v.pending)
+         hgt += rows + ui.S(AI_ROW_GAP);
+      hgt += 2 * (rows + ui.S(AI_ROW_GAP)) + rows + ui.S(AI_LEVELS_GAP);
+      hgt += ui.S(AI_DIV_GAP) + ui.S(AI_LOTS_H) + ui.S(AI_TILE_H) + ui.S(AI_TILE_GAP);
+      hgt += ui.S(AI_META_H) * (MetaTwoRows(v, w - 2 * ui.S(10), ui) ? 2 : 1);
+      if(v.showCommission)
+         hgt += ui.S(AI_COMM_H);
+      hgt += ui.S(AI_META_GAP) + ui.S(AI_CONFIRM_H) + ui.S(AI_CONFIRM_GAP) + ui.S(AI_STATUS_H);
+      return hgt;
      }
 
    int               Menu(const AiView &v, const AiTheme &t, CAiUi &ui, const int cx, const int top, const int cw, const int gap, const int rowH)
@@ -351,8 +398,8 @@ private:
       int fs = ui.fontSize;
       int pad = ui.S(10);
       int gap = ui.S(4);
-      int hh = ui.S(40);
-      int bw = ui.S(28);
+      int hh = ui.S(AI_HEAD_H);
+      int bw = ui.S(26);
       int by = y + (hh - bw) / 2;
       int right = x + w - ui.S(6);
       int colX = right - bw;
@@ -416,8 +463,9 @@ public:
       chartW = cw;
       chartH = ch;
       w = ui.S(300);
+      // A first guess below the full ticket's height: the first frame then draws it and measures it.
       if(fullH <= 0)
-         fullH = ui.S(520);
+         fullH = ui.S(380);
       if(docked)
          x = DockX(ui);
       Clamp(ui);
@@ -471,7 +519,7 @@ public:
    // The free part of the header, left of its buttons, moves the panel.
    bool              InHeader(const int px, const int py, CAiUi &ui) const
      {
-      return (px >= x && px < m_dragRight && py >= y && py < y + ui.S(40));
+      return (px >= x && px < m_dragRight && py >= y && py < y + ui.S(AI_HEAD_H));
      }
 
    int               FocusCount() const
@@ -588,11 +636,11 @@ public:
       int gap = ui.S(4);
       int cx = x + pad;
       int cw = w - 2 * pad;
-      int rowH = ui.S(28);
+      int rowH = ui.S(AI_ROW_H);
 
       // The picture first: the labels and fields created after it are drawn over it.
       ui.BeginSurface(AI_P + "XBG#r", x, y);
-      int cy = Header(v, t, ui) + ui.S(10);
+      int cy = Header(v, t, ui) + ui.S(AI_TOP_GAP);
 
       // SELL / BUY with live prices. The side being previewed is filled.
       bool live = (v.phase != AI_PHASE_IDLE);
@@ -601,7 +649,7 @@ public:
       if(v.compact)
         {
          int third = (cw - 2 * gap) / 3;
-         int mh = ui.S(36);
+         int mh = ui.S(34);
          Control(AI_CMD_SELL, AI_P + "MSELL", cx, cy, third, mh, v.bid, sellOn ? t.sellFill : t.sellDim, sellOn ? t.sellFill : t.sellEdge,
                  sellOn ? t.onFill : t.sellText, fs + 1, true, ui, ui.S(6));
          Control(AI_CMD_RISK_NEXT, AI_P + "MRISK", cx + third + gap, cy, third, mh, v.riskShort, t.chip, t.inputBorder, t.text, fs - 1, false, ui, ui.S(6));
@@ -609,6 +657,9 @@ public:
                  buyOn ? t.buyFill : t.buyEdge, buyOn ? t.onFill : t.buyText, fs + 1, true, ui, ui.S(6));
          cy += mh + ui.S(8);
          cy = ConfirmAndStatus(v, t, ui, cx, cy, cw, gap, v.phase != AI_PHASE_IDLE);
+         // The full ticket is not drawn here, so its height is worked out: when the chart grows tall
+         // enough, the next frame goes back to it.
+         fullH = FullHeight(v, ui);
          if(v.menuOpen)
             cy = Menu(v, t, ui, cx, cy, cw, gap, ui.S(24));
          h = cy - y;
@@ -620,7 +671,7 @@ public:
         }
 
       int half = (cw - ui.S(6)) / 2;
-      int bh = ui.S(56);
+      int bh = ui.S(AI_SIDE_H);
       color sellTx = sellOn ? t.onFill : t.sellText;
       color buyTx = buyOn ? t.onFill : t.buyText;
       // Prices in large type, smaller for a long one (BTCUSD, indices), so they keep clear of the spread pill.
@@ -630,14 +681,14 @@ public:
       while(pf > fs && MathMax(ui.TextWidth(v.bid, pf, true), ui.TextWidth(v.ask, pf, true)) > priceRoom)
          pf--;
       ui.Shape(cx, cy, half, bh, ui.S(6), sellOn ? t.sellFill : t.sellDim, sellOn ? t.sellFill : t.sellEdge);
-      ui.Label(AI_P + "SELL#t1", cx + ui.S(12), cy + ui.S(9), "SELL", sellTx, fs - 1, ANCHOR_LEFT_UPPER, true);
-      ui.Label(AI_P + "SELL#t2", cx + ui.S(12), cy + ui.S(24), ui.Fit(v.bid, priceRoom, pf, true), sellTx, pf, ANCHOR_LEFT_UPPER, true);
+      ui.Label(AI_P + "SELL#t1", cx + ui.S(12), cy + ui.S(8), "SELL", sellTx, fs - 1, ANCHOR_LEFT_UPPER, true);
+      ui.Label(AI_P + "SELL#t2", cx + ui.S(12), cy + ui.S(21), ui.Fit(v.bid, priceRoom, pf, true), sellTx, pf, ANCHOR_LEFT_UPPER, true);
       AddFocus(AI_CMD_SELL, cx, cy, half, bh);
       int bx2 = cx + half + ui.S(6);
       int bw2 = cw - half - ui.S(6);
       ui.Shape(bx2, cy, bw2, bh, ui.S(6), buyOn ? t.buyFill : t.buyDim, buyOn ? t.buyFill : t.buyEdge);
-      ui.Label(AI_P + "BUY#t1", bx2 + bw2 - ui.S(12), cy + ui.S(9), "BUY", buyTx, fs - 1, ANCHOR_RIGHT_UPPER, true);
-      ui.Label(AI_P + "BUY#t2", bx2 + bw2 - ui.S(12), cy + ui.S(24), ui.Fit(v.ask, priceRoom, pf, true), buyTx, pf, ANCHOR_RIGHT_UPPER, true);
+      ui.Label(AI_P + "BUY#t1", bx2 + bw2 - ui.S(12), cy + ui.S(8), "BUY", buyTx, fs - 1, ANCHOR_RIGHT_UPPER, true);
+      ui.Label(AI_P + "BUY#t2", bx2 + bw2 - ui.S(12), cy + ui.S(21), ui.Fit(v.ask, priceRoom, pf, true), buyTx, pf, ANCHOR_RIGHT_UPPER, true);
       AddFocus(AI_CMD_BUY, bx2, cy, bw2, bh);
       // The spread, in a pill between the two.
       if(v.spreadPips != "")
@@ -647,17 +698,17 @@ public:
          ui.Shape(x + w / 2 - pw / 2, cy + bh / 2 - ph / 2, pw, ph, ph / 2, t.bg, t.border);
          ui.Label(AI_P + "XSPREAD#t", x + w / 2, cy + bh / 2, v.spreadPips, t.muted, fs - 1, ANCHOR_CENTER, false, 14);
         }
-      cy += bh + ui.S(8);
+      cy += bh + ui.S(AI_SIDE_GAP);
 
       // Market | Limit / Stop, both choices in sight.
-      int segH = ui.S(30);
+      int segH = ui.S(AI_SEG_H);
       int segW = (cw - ui.S(6)) / 2;
       ui.Shape(cx, cy, cw, segH, ui.S(6), t.inputBg, t.divider);
       Control(AI_CMD_MARKET, AI_P + "MKT", cx + ui.S(2), cy + ui.S(2), segW, segH - ui.S(4), "Market", v.pending ? t.inputBg : t.selected,
               v.pending ? t.inputBg : t.selected, v.pending ? t.muted : t.text, fs - 1, !v.pending, ui);
       Control(AI_CMD_PENDING, AI_P + "PND", cx + ui.S(4) + segW, cy + ui.S(2), cw - segW - ui.S(6), segH - ui.S(4), "Limit / Stop",
               v.pending ? t.selected : t.inputBg, v.pending ? t.selected : t.inputBg, v.pending ? t.text : t.muted, fs - 1, v.pending, ui);
-      cy += segH + ui.S(8);
+      cy += segH + ui.S(AI_SEG_GAP);
 
       // The name column is as wide as its longest name, so a larger font never runs into the fields.
       int lblW = MathMax(ui.S(64), MathMax(ui.TextWidth("Take profit", fs), MathMax(ui.TextWidth("Stop loss", fs), ui.TextWidth(v.riskWord, fs))) + ui.S(10));
@@ -668,7 +719,7 @@ public:
          ui.Label(AI_P + "XENL#t", cx, cy + rowH / 2, "Entry", t.muted, fs, ANCHOR_LEFT, false);
          Stepper(AI_CMD_ENTRY_DEC, AI_CMD_ENTRY_INC, "ENTRY", AI_P + "E_ENTRY", v.entryText, cx + lblW, cy, cw - lblW - typeW - gap, rowH, v, t, ui);
          ui.Label(AI_P + "XENT#t", cx + cw, cy + rowH / 2, ui.Fit(v.entryType, typeW, fs - 1, true), t.muted, fs - 1, ANCHOR_RIGHT, true);
-         cy += rowH + ui.S(6);
+         cy += rowH + ui.S(AI_ROW_GAP);
         }
 
       // Risk: three presets, then a custom value with its unit (%, money, lots) in one frame.
@@ -689,46 +740,44 @@ public:
       ui.Shape(fx + fw - uw - 1, cy + ui.S(6), 1, rowH - ui.S(12), 0, t.inputBorder, t.inputBorder);
       Control(AI_CMD_RISK_UNIT, AI_P + "RISKUNIT", fx + fw - uw, cy + 1, uw - 1, rowH - 2, v.customUnit, ff, ff, customOn ? t.text : t.muted, fs - 1, customOn, ui,
               ui.S(3));
-      cy += rowH + ui.S(6);
+      cy += rowH + ui.S(AI_ROW_GAP);
 
       LevelRow(AI_CMD_SL_MODE, AI_CMD_SL_RECALL, AI_CMD_SL_DEC, AI_CMD_SL_INC, "SL", "Stop loss", v.slText, v.slUnit, cx, cy, cw, lblW, gap, rowH, v, t, ui);
-      cy += rowH + ui.S(6);
+      cy += rowH + ui.S(AI_ROW_GAP);
       LevelRow(AI_CMD_TP_MODE, AI_CMD_TP_RECALL, AI_CMD_TP_DEC, AI_CMD_TP_INC, "TP", "Take profit", v.tpText, v.tpUnit, cx, cy, cw, lblW, gap, rowH, v, t, ui);
-      cy += rowH + ui.S(10);
+      cy += rowH + ui.S(AI_LEVELS_GAP);
 
       // What the order means in money: the lots large, then risk, reward and R:R in tiles.
       ui.Shape(cx, cy, cw, 1, 0, t.divider, t.divider);
-      cy += ui.S(8);
-      int lineY = cy + ui.S(12);
+      cy += ui.S(AI_DIV_GAP);
+      int lineY = cy + ui.S(11);
       int unitsW = ui.TextWidth(v.unitsText, fs - 1);
       ui.Label(AI_P + "XRLOTS#l", cx, lineY, "Lots", t.muted, fs, ANCHOR_LEFT, false);
       ui.Label(AI_P + "XRLOTS#u", cx + cw, lineY, v.unitsText, t.muted, fs - 1, ANCHOR_RIGHT, false);
       ui.Label(AI_P + "XRLOTS#v", cx + cw - unitsW - ui.S(6), lineY, v.lotsNum, t.text, fs + 6, ANCHOR_RIGHT, true);
-      cy += ui.S(26);
-      int th = ui.S(50);
+      cy += ui.S(AI_LOTS_H);
+      int th = ui.S(AI_TILE_H);
       int tw = (cw - 2 * gap) / 3;
       Tile("RISK", "Risk", v.riskMoney, v.riskPctText, t.danger, cx, cy, tw, th, t, ui);
       Tile("REWARD", "Reward", v.rewardMoney, v.rewardPctText, t.good, cx + tw + gap, cy, tw, th, t, ui);
       Tile("RR", "R : R", v.rr, v.pipsShort, t.text, cx + 2 * (tw + gap), cy, cw - 2 * (tw + gap), th, t, ui);
-      cy += th + ui.S(6);
+      cy += th + ui.S(AI_TILE_GAP);
       // Pip value on the left, margin and what stays free on the right.
       // Long amounts (a large account, a big panel scale) take two rows rather than run into each other.
       int mf = fs - 1;
-      int pipW = ui.TextWidth("Pip value", mf) + ui.S(5) + ui.TextWidth(v.pipValue, mf, true);
       int freeW = ui.TextWidth(v.freeShort, mf);
       int marW = ui.TextWidth(v.marginShort, mf, true);
-      int marginW = ui.TextWidth("Margin", mf) + ui.S(5) + marW + ui.S(4) + freeW;
       ui.Label(AI_P + "XMETA#a", cx, cy, "Pip value", t.muted, mf, ANCHOR_LEFT_UPPER, false);
       ui.Label(AI_P + "XMETA#b", cx + ui.TextWidth("Pip value", mf) + ui.S(5), cy, v.pipValue, t.text, mf, ANCHOR_LEFT_UPPER, true);
-      if(pipW + ui.S(12) + marginW > cw)
-         cy += ui.S(17);
+      if(MetaTwoRows(v, cw, ui))
+         cy += ui.S(AI_META_H);
       ui.Label(AI_P + "XMETA#e", cx + cw, cy, v.freeShort, t.muted, mf, ANCHOR_RIGHT_UPPER, false);
       ui.Label(AI_P + "XMETA#d", cx + cw - freeW - ui.S(4), cy, v.marginShort, t.text, mf, ANCHOR_RIGHT_UPPER, true);
       ui.Label(AI_P + "XMETA#c", cx + cw - freeW - marW - ui.S(9), cy, "Margin", t.muted, mf, ANCHOR_RIGHT_UPPER, false);
-      cy += ui.S(17);
+      cy += ui.S(AI_META_H);
       if(v.showCommission)
-         cy = Readout("COMM", "Commission", v.commission, t.muted, cx, cy, cw, ui.S(17), t, ui, false);
-      cy += ui.S(8);
+         cy = Readout("COMM", "Commission", v.commission, t.muted, cx, cy, cw, ui.S(AI_COMM_H), t, ui, false);
+      cy += ui.S(AI_META_GAP);
 
       cy = ConfirmAndStatus(v, t, ui, cx, cy, cw, gap, true);
       // Measured before the menu: an open menu may run past a short chart (the panel moves up),

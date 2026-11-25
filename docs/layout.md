@@ -4,7 +4,10 @@ MetaTrader 5 opens with a lot around the chart: the Market Watch and Navigator o
 Toolbox at the bottom, and several toolbars. A few clicks give the chart most of the screen, in the
 modern style. Nothing here needs code, and every step can be undone.
 
-![The modern chart style with the order ticket](images/chart.png)
+![The browser prototype of the clean layout](images/chart.png)
+
+*The browser prototype this style was designed with. In MetaTrader 5 the chart colours and the
+order ticket look like this; the menus, toolbars, scales and drawing tools stay MetaTrader 5's own.*
 
 ## 1. Give the chart the room
 
