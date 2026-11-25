@@ -66,8 +66,8 @@ private:
    int               m_riskBase;
    bool              m_autoRecall;
    bool              m_oneClick;
-   bool              m_collapsed;     // the trader chose the slim layout
-   bool              m_compact;       // the slim layout is shown (chosen, or the chart is too short)
+   bool              m_collapsed;     // fold to the slim layout while not trading (the - / + button)
+   bool              m_compact;       // the slim layout is shown (folded while not trading, or the chart is too short)
    bool              m_forcedCompact; // shown slim only because the full panel does not fit
    bool              m_menuOpen;
    bool              m_refreshEdits;
@@ -111,6 +111,7 @@ private:
    double            m_grabAt;       // the price under the mouse at the press
    double            m_grabFrom;     // and the line's price then
    int               m_tagWidest;    // the widest price tag in the area, last frame
+   bool              m_tagShown;     // a price tag was drawn last frame
    string            m_hover;        // the line under the mouse, drawn thicker
    ulong             m_lastMove;
 
@@ -238,10 +239,12 @@ private:
       m_riskBase = (baseThen != (int)cfg.riskBase) ? (int)cfg.riskBase : (int)m_store.GetI("base", (long)cfg.riskBase);
       if(m_riskBase != AI_BASE_EQUITY && m_riskBase != AI_BASE_BALANCE)
          m_riskBase = AI_BASE_EQUITY;
-      m_collapsed = m_store.GetB("collapsed", false);
-      m_panel.docked = m_store.GetB("docked", true);
-      m_panel.x = (int)m_store.GetI("px", 0);
-      m_panel.prefY = (int)m_store.GetI("py", 0);
+      // Folded and floating top left by default: the chart keeps its room until there is a trade to set.
+      m_collapsed = m_store.GetB("fold", true);
+      m_panel.docked = m_store.GetB("dock", false);
+      // New keys since 1.30: an update starts from the new place too, not the old docked one.
+      m_panel.x = (int)m_store.GetI("fx", -1);
+      m_panel.prefY = (int)m_store.GetI("fy", 0);
      }
 
    void              SaveSettings()
@@ -257,10 +260,10 @@ private:
       m_store.Set("auto_input", cfg.autoRecall ? "1" : "0");
       m_store.Set("base", IntegerToString(m_riskBase));
       m_store.Set("base_input", IntegerToString((int)cfg.riskBase));
-      m_store.Set("collapsed", m_collapsed ? "1" : "0");
-      m_store.Set("docked", m_panel.docked ? "1" : "0");
-      m_store.Set("px", IntegerToString(m_panel.x));
-      m_store.Set("py", IntegerToString(m_panel.prefY));
+      m_store.Set("fold", m_collapsed ? "1" : "0");
+      m_store.Set("dock", m_panel.docked ? "1" : "0");
+      m_store.Set("fx", IntegerToString(m_panel.x));
+      m_store.Set("fy", IntegerToString(m_panel.prefY));
       m_store.Save(SettingsPath());
      }
 
@@ -566,7 +569,6 @@ private:
 
    void              OnSide(const int side)
      {
-      m_collapsed = false;
       if(m_phase == AI_PHASE_PREVIEW && m_side == side)
         {
          Cancel();
@@ -1498,6 +1500,7 @@ private:
       v.symbol = _Symbol;
       v.period = AiPeriodName(PeriodSeconds(_Period));
       v.docked = m_panel.docked;
+      v.fold = m_collapsed;
       v.bid = (m_plan.bid > 0.0) ? AiPriceStr(m_spec, m_plan.bid) : "-";
       v.ask = (m_plan.ask > 0.0) ? AiPriceStr(m_spec, m_plan.ask) : "-";
       v.spread = (m_plan.ask > 0.0) ? "Spread " + DoubleToString(m_plan.spreadPips, 1) + " pips" : "";
@@ -1736,7 +1739,9 @@ private:
             panel = m_panel.w + m_ui.S(24);
          else if(m_panel.x + m_panel.w / 2 > cw / 2)
             panel = MathMax(0, cw - m_panel.x) + m_ui.S(16);
-         want = MathMax(10.0, MathMin(50.0, (panel + room) * 100.0 / cw));
+         // With no panel on the right and no price tag drawn, the chart keeps all its room.
+         if(panel > 0 || m_tagShown)
+            want = MathMax(10.0, MathMin(50.0, (panel + room) * 100.0 / cw));
         }
       if(MathAbs(want - m_lastShift) < 0.5)
          return;
@@ -1788,11 +1793,13 @@ private:
       m_panel.Place(cw, ch, m_ui);
       // A chart shorter than the full panel gets the slim layout, so CONFIRM never falls off it.
       m_forcedCompact = !m_panel.FullFits(m_ui);
-      m_compact = (m_collapsed || m_forcedCompact);
+      // Folded, the full ticket opens for a preview and folds again when it is over.
+      m_compact = (m_forcedCompact || (m_collapsed && m_phase == AI_PHASE_IDLE));
       AiTagArea tags = TagArea(cw);
       // The card opens left of the tag column when the tags are there, so it never hides them.
       m_panel.tagsFrom = (tags.to - tags.from >= m_ui.S(90)) ? tags.from : -1;
       g_aiTagWidest = 0;
+      g_aiTagShown = false;
       bool redraw = force;
       // Open trades first. Objects they create are drawn over the panel, so the panel and the card
       // are then drawn again on top, but never under a field the trader is typing in.
@@ -1826,6 +1833,7 @@ private:
                    (m_phase == AI_PHASE_COOLDOWN && m_afterCooldown == AI_PHASE_PREVIEW));
       m_lines.Sync(m_plan, m_spec, m_theme, show, cfg.showZones, tags, cw, ch, m_ui, Currency());
       m_tagWidest = g_aiTagWidest;
+      m_tagShown = g_aiTagShown;
       UpdateShift(cw);
       ChartRedraw();
      }
@@ -1943,6 +1951,8 @@ private:
             SaveSettings();
             if(m_forcedCompact && !m_collapsed)
                Status("This chart is too short for the full panel. Make the chart taller to expand it", 0, 5000);
+            else
+               Status(m_collapsed ? "The ticket folds to one row while you are not trading" : "The ticket stays open", 0, 4000);
             break;
          case AI_CMD_RISK_NEXT:
             SetChip((m_chip + 1) % 4);
@@ -1993,6 +2003,7 @@ public:
       m_grabAt = 0.0;
       m_grabFrom = 0.0;
       m_tagWidest = 0;
+      m_tagShown = false;
       m_hover = "";
       ZeroMemory(m_hist);
       m_histTried = false;
@@ -2020,7 +2031,7 @@ public:
       m_riskBase = AI_BASE_EQUITY;
       m_autoRecall = true;
       m_oneClick = false;
-      m_collapsed = false;
+      m_collapsed = true;
       m_compact = false;
       m_forcedCompact = false;
       m_menuOpen = false;
@@ -2144,6 +2155,8 @@ public:
       m_ui.fontSize = (int)MathMax(7, MathMin(16, cfg.fontSize));
       if(m_panel.prefY <= 0)
          m_panel.prefY = m_ui.S(24);
+      if(m_panel.x < 0)
+         m_panel.x = m_ui.S(8);
       AiBuildTheme((int)cfg.theme, (color)ChartGetInteger(0, CHART_COLOR_BACKGROUND), m_theme);
       ParseKeys();
 

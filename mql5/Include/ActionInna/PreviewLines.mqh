@@ -76,6 +76,8 @@ struct AiTagArea
 // The widest tag drawn in the area since the app last reset it: the room kept right of the last
 // candle follows it (CAiApp.UpdateShift), so the next frame's tags fit there.
 int g_aiTagWidest = 0;
+// Whether any price tag was drawn since the app last reset it: only then does the chart make room.
+bool g_aiTagShown = false;
 
 // Pixels between the mouse and a horizontal line; a large number when the line has no place.
 int AiLineGap(const string line, const int my)
@@ -126,6 +128,7 @@ void AiPlaceTag(const string rn, const string ln, const double price, const stri
       AiShowObject(ln, false);
       return;
      }
+   g_aiTagShown = true;
    int fs = MathMax(ui.fontSize - 1, 7);
    int h = ui.S(18);
    int pad = ui.S(6);

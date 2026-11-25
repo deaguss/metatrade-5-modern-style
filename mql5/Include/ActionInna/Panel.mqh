@@ -24,6 +24,7 @@ struct AiView
    bool              forcedCompact;   // compact only because the chart is too short for the full panel
    bool              menuOpen;
    bool              docked;          // the panel follows the chart's right edge
+   bool              fold;            // folds to the slim layout while not trading
    string            chipText[3];
    int               chip;            // 0..2 presets, 3 custom
    string            customText;
@@ -433,7 +434,7 @@ private:
       ui.Shape(ix + iw - ui.S(5), iy, ui.S(5), ih, ui.S(2), ic, ic);
       // While a short chart forces the slim layout there is nothing to expand, so no button.
       if(!v.forcedCompact)
-         Control(AI_CMD_COLLAPSE, AI_P + "COLLAPSE", colX, by, bw, bw, v.compact ? "+" : AI_DASH, t.bg, t.bg, t.text, fs + 2, true, ui);
+         Control(AI_CMD_COLLAPSE, AI_P + "COLLAPSE", colX, by, bw, bw, v.fold ? "+" : AI_DASH, t.bg, t.bg, t.text, fs + 2, true, ui);
       ui.Shape(x + 1, y + hh, w - 2, 1, 0, t.divider, t.divider);
       return y + hh;
      }

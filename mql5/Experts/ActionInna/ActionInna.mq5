@@ -4,7 +4,7 @@
 //+------------------------------------------------------------------+
 #property copyright   "ActionInna, MIT licence"
 #property link        "https://github.com/deaguss/metatrade-5-modern-style"
-#property version     "1.21"
+#property version     "1.30"
 #property description "Risk trade panel: 1% / 1.5% / 2% / custom risk presets, SL/TP in pips, price or R,"
 #property description "a chart preview before anything is sent, and recall of the SL/TP you used before."
 

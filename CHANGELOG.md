@@ -6,6 +6,17 @@ All notable changes to MetaTrader 5 Modern Style are recorded here. The format f
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-25
+
+### Changed
+
+- The ticket takes less of the chart. While you are not trading it is one row (SELL, risk, BUY);
+  BUY or SELL opens the full ticket with the preview, and it folds again after Confirm or Cancel.
+  The `+` button keeps it open. A new ticket floats at the top left instead of docking at the right,
+  and an update starts there too.
+- The chart is shifted only when something needs the room (a docked ticket, or price tags on the
+  chart), so an idle chart keeps all of it. EA version 1.30.
+
 ## [1.0.1] - 2026-11-25
 
 ### Fixed
@@ -47,6 +58,7 @@ First public release.
 - A guide to a clean MetaTrader 5 window layout and its drawing tools (`docs/layout.md`).
 - A browser prototype of the ticket and the chart style (`prototype/`).
 
-[Unreleased]: https://github.com/deaguss/metatrade-5-modern-style/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/deaguss/metatrade-5-modern-style/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/deaguss/metatrade-5-modern-style/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/deaguss/metatrade-5-modern-style/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/deaguss/metatrade-5-modern-style/releases/tag/v1.0.0

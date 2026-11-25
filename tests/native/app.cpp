@@ -211,7 +211,9 @@ static void CheckServerRefusals()
    g_fake.refusals.clear();
   }
 
-static void Setup(const std::string &name, bool manage = true, const BrokerProfile *broker = nullptr)
+// Most scenarios work an open ticket docked at the right; fresh leaves a new EA's defaults (folded,
+// floating top left), which ScenarioFold checks.
+static void Setup(const std::string &name, bool manage = true, const BrokerProfile *broker = nullptr, bool fresh = false)
   {
    CheckServerRefusals();
    s_case = name;
@@ -224,6 +226,21 @@ static void Setup(const std::string &name, bool manage = true, const BrokerProfi
    g_app.cfg.manageOrders = manage;
    g_app.Init();
    Refresh();
+   if(!fresh && Shown(kP + "MSELL#tx"))
+     {
+      Event(CHARTEVENT_OBJECT_CLICK, 0, 0, kP + "COLLAPSE#tx");
+      Refresh();
+     }
+   if(!fresh && IntOf(kP + "XBG#r", OBJPROP_XDISTANCE) < g_fake.chartW / 2)
+     {
+      Event(CHARTEVENT_OBJECT_CLICK, 0, 0, kP + "DOCK#tx");
+      Refresh();
+     }
+   if(!fresh)
+     {
+      Advance(5000);   // the messages those clicks showed run out
+      Refresh();
+     }
   }
 
 static void AddPos(ulong t, int type, double vol, double open, double sl, double tp)
@@ -1042,6 +1059,7 @@ static void ScenarioShortChart()
    static CAiApp fresh;   // a new EA, as MT5 makes when it is put on a chart
    fresh.cfg = DefaultCfg();
    fresh.Init();
+   { int64_t l = 0; double d = 0; string s(kP + "COLLAPSE#tx"); fresh.ChartEvent(CHARTEVENT_OBJECT_CLICK, l, d, s); }   // keep it open
    auto tick = [&]() { for(int i = 0; i < 3; i++) { Advance(200); fresh.Timer(); } };
    auto resized = [&](int h) { g_fake.chartH = h; int64_t l = 0; double d = 0; string s(""); fresh.ChartEvent(CHARTEVENT_CHART_CHANGE, l, d, s); tick(); };
    tick();
@@ -1055,6 +1073,30 @@ static void ScenarioShortChart()
    EXPECT(Shown(kP + "SELL#t2"), "and goes back to the full one as soon as it fits: its height is known while slim");
    EXPECT(full <= 440, "the full ticket is no taller than the old panel (440 px): " + std::to_string(full));
    fresh.Deinit(REASON_REMOVE);
+  }
+
+// A new EA keeps the chart roomy: the ticket is one row (SELL / risk / BUY) floating top left, opens
+// for a preview and folds again after it, and the chart is not shifted while nothing needs room.
+static void ScenarioFold()
+  {
+   Setup("a new ticket is folded, opens for a preview, folds after it", true, nullptr, true);
+   EXPECT(Shown(kP + "MSELL#tx") && !Shown(kP + "SELL#t2"), "a new EA shows the one-row ticket");
+   EXPECT(IntOf(kP + "XBG#r", OBJPROP_XDISTANCE) < 100, "floating at the left: x " + std::to_string(IntOf(kP + "XBG#r", OBJPROP_XDISTANCE)));
+   EXPECT(g_fake.chartI[CHART_SHIFT] == 0, "and the chart keeps its own shift: nothing needs room");
+   Key('B');
+   Refresh();
+   EXPECT(Shown(kP + "SELL#t2") && Shown(kP + "E_SL"), "BUY opens the full ticket with the preview");
+   EXPECT(g_fake.chartI[CHART_SHIFT] == 1, "and the chart makes room for the price tags");
+   Key(27);
+   Refresh();
+   EXPECT(Shown(kP + "MSELL#tx") && !Shown(kP + "SELL#t2"), "closing the preview folds it again");
+   Refresh();
+   EXPECT(g_fake.chartI[CHART_SHIFT] == 0, "and gives the chart its room back");
+   Click(kP + "COLLAPSE#tx");
+   EXPECT(Shown(kP + "SELL#t2"), "+ keeps the ticket open");
+   Key('H');
+   Refresh();
+   EXPECT(Shown(kP + "MSELL#tx"), "and the H key folds it again");
   }
 
 // No two words on the ticket run into each other, with narrow or wide text, in every state.
@@ -1572,6 +1614,7 @@ int main(int argc, char **argv)
    ScenarioTicketControls();
    ScenarioNoOverlap();
    ScenarioShortChart();
+   ScenarioFold();
    ScenarioOtherEas();
    ScenarioPreviewAndCard();
    ScenarioConfirmHoldsPreview();

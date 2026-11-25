@@ -84,9 +84,14 @@ drag the entry line away from the price. The order type follows from where you p
 | Buy | Buy Limit | Buy Stop |
 | Sell | Sell Stop | Sell Limit |
 
+**A roomy chart.** While you are not trading, the ticket is one small row (SELL, risk, BUY) at the
+top left, and the chart is not shifted. Press BUY or SELL and the full ticket opens with the preview;
+after Confirm or Cancel it folds again. The `+` button keeps the ticket open; `–` (or the `H` key)
+lets it fold again.
+
 **Moving the ticket.** Drag it by its top bar (the six dots and the symbol) and drop it anywhere.
 Near an edge, or near its place at the right, it snaps there. The window button in the top bar docks
-it to the right edge or lets it float. The `–` button folds it to one row: SELL, risk, BUY.
+it to the right edge (the chart then shifts to keep the newest candles clear of it) or lets it float.
 
 **Changing open trades.** Drag the stop loss, take profit or entry line of an open trade. A card
 opens with the new levels and the money at each. Nothing changes until you press **Confirm change**.
