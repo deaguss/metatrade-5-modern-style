@@ -51,6 +51,8 @@ All notable changes to MetaTrader 5 Modern Style are recorded here. The format f
   MetaTrader 5 has loaded yesterday's bar, instead of "-".
 - Open trades sit over a faint red zone (entry to stop loss) and a faint green one (entry to take
   profit), like a long or short position drawing; a pending order's entry line and price always show.
+- Right-click a watchlist symbol for **Split view**: open it on one of the charts on the screen, or in
+  a new chart beside them.
 - A **Clear** button (the eraser at the top) removes the drawings on the chart, or on every chart on
   the screen; `Ctrl+Z` brings them back.
 - A busy chart stays readable: a pending order shows its entry line and price only until the mouse is on

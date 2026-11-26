@@ -57,6 +57,8 @@ next timeframe up (M15, then H1, H4, D1...), so a top-down look takes one click.
 
 ![Four charts of XAUUSD, H1 to W1, with the same drawings and the open trade on each](images/innachart-split.png)
 
+- Right-click a symbol in the watchlist to open it on one of the charts on the screen, or in a new
+  chart beside them (**Split view** in its menu).
 - Click a chart to work on it: it gets a blue edge, and the symbol and timeframe buttons, the
   watchlist, the order ticket and the drawing tools work on it.
 - Two charts of one symbol show the same drawings: a line drawn on the H1 shows on the D1 too.

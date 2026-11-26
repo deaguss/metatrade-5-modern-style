@@ -247,7 +247,11 @@ export class Watchlist {
   rowMenu(i) {
     const it = this.items[i];
     const m = [];
-    if (it.type === 'symbol') m.push({ label: 'Open ' + it.name, action: () => this.o.onPick(it.name) });
+    if (it.type === 'symbol') {
+      m.push({ label: 'Open ' + it.name, action: () => this.o.onPick(it.name) });
+      // the split view: open it on one of the charts on the screen, or in a new one beside
+      if (this.o.splitMenu) m.push(...this.o.splitMenu(it.name));
+    }
     else {
       m.push({ label: it.closed ? 'Open the section' : 'Fold the section', action: () => {
         it.closed = !it.closed;

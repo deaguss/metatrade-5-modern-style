@@ -939,7 +939,38 @@ const watch = new Watchlist(right, {
     return s ? s.digits : chart.symbol === name ? chart.digits : 5;
   },
   marketWatch: () => app.symbols.map((s) => s.name),
+  splitMenu: (name) => splitMenu(name),
 });
+
+// A watchlist symbol's right-click menu for the split view: on one of the charts on the screen, or in
+// a new chart beside the ones there (up to four), on the active chart's timeframe.
+function splitMenu(name) {
+  const items = [{ sep: true }, { title: 'Split view' }];
+  if (panes.length > 1) {
+    panes.forEach((q, i) => items.push({ label: 'On chart ' + (i + 1) + ' (now ' + (q.symbol || '-') + ' ' + tfLabel(q.tf) + ')', check: q === active,
+      action: () => {
+        activate(q);
+        loadChart(name, q.tf, q);
+      } }));
+  }
+  const into = (grid) => () => {
+    const before = panes.length;
+    const tf = active.tf;
+    setGrid(grid);
+    const p = panes[before];
+    if (!p) return;
+    activate(p);
+    loadChart(name, tf, p);
+  };
+  if (panes.length === 1) {
+    items.push({ label: 'In a new chart beside this one', icon: 'g2v', action: into('2v') });
+    items.push({ label: 'In a new chart under this one', icon: 'g2h', action: into('2h') });
+  } else if (panes.length < 4) {
+    items.push({ label: 'In a new chart (' + (panes.length + 1) + ' on the screen)', icon: panes.length === 2 ? 'g3' : 'g4', action: into(panes.length === 2 ? '3' : '4') });
+  }
+  items.push({ sep: true });
+  return items;
+}
 
 function showWatchlist() {
   right.hidden = !app.layout.watchlist;
