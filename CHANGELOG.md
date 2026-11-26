@@ -49,12 +49,17 @@ All notable changes to MetaTrader 5 Modern Style are recorded here. The format f
   maximized, so the page showed cut, with its title bar and a grey area around it).
 - The watchlist shows a price for a symbol with no tick yet (its last bar's close) and its change once
   MetaTrader 5 has loaded yesterday's bar, instead of "-".
-- A busy chart stays readable: a pending order shows its faint entry line only until the mouse is on
+- Open trades sit over a faint red zone (entry to stop loss) and a faint green one (entry to take
+  profit), like a long or short position drawing; a pending order's entry line and price always show.
+- A **Clear** button (the eraser at the top) removes the drawings on the chart, or on every chart on
+  the screen; `Ctrl+Z` brings them back.
+- A busy chart stays readable: a pending order shows its entry line and price only until the mouse is on
   it (or its label is clicked), and a long or short position drawing shows its stats while the mouse is
   on it or it is selected (or always, with its **Always show stats** setting).
 - The watchlist drops the Chg column, then Chg%, as it gets narrower, so no column is cut off.
 - The chart no longer flickers while a panel beside it is dragged, nor the glued screen while
   MetaTrader 5 is moved.
+- InnaChart as a window of its own stays maximized after a restart, if it was maximized.
 - A second InnaChart started for tests (`--no-glue`) no longer closes the screen of the one already
   running, and the tray menu opens a closed screen again at the first click.
 - InnaChart no longer closes its screen while MetaTrader 5 shows a login window or another window in

@@ -92,6 +92,24 @@ suite in `Scenarios.mqh`. A change to how the ticket or the chart lines behave n
 - Colours: every text pair 4.5:1, every control edge 3:1, in both themes. Record new colours in
   `DESIGN.md` with their measured contrast.
 
+## Commits
+
+Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+feat(innachart): add a Clear chart button
+
+Why the change, wrapped at 72 characters: what it does for the trader,
+and anything a reviewer should know.
+```
+
+- The type: `feat` (something new for the trader), `fix` (a bug), `docs`, `test`, `refactor`,
+  `perf`, `build` (scripts, CI), `chore`.
+- The scope, when it helps: `innachart` (the screen and InnaChart.exe), `ea` (ActionInna),
+  `service` (the InnaChart service), `ticket`.
+- The subject: imperative, lower case after the colon, no full stop, 72 characters at most.
+- One change per commit; the tests pass at every commit.
+
 ## Pull requests
 
 - One change per pull request, with an entry under "Unreleased" in `CHANGELOG.md`.

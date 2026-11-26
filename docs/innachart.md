@@ -46,6 +46,7 @@ From then on, opening MetaTrader 5 is enough: the service starts with it, and th
 | Watchlist | The list icon at the top right. It starts with MetaTrader 5's Market Watch and is then your own: **+** adds a symbol, the **x** on a row (or Delete, or a right-click) removes it, drag a row to move it, the **...** menu adds sections. Click a column's title to sort by it. Click a row, or use the arrow keys, to open its chart. Drag the panel's left edge to make it wider or narrower |
 | Hide the screen (MetaTrader 5's charts show) | The **MT5** button at the top right; `Ctrl+Alt+M` or the tray icon shows it again |
 | A window of its own (to move it to another monitor, or maximise it) | The window button next to **MT5**, or the tray menu's **Separate window**. The same button glues it onto MetaTrader 5 again. The choice is remembered |
+| Clear the chart | The eraser at the top: the drawings on this chart, or on every chart on the screen. `Ctrl+Z` brings them back |
 | Several charts at once | The layout button next to the chart type: one chart, two side by side, two one over the other, three (a big one and two beside it) or four (two by two). See [Several charts](#several-charts) |
 
 ### Several charts
@@ -53,6 +54,8 @@ From then on, opening MetaTrader 5 is enough: the service starts with it, and th
 Split the screen with the layout button next to the chart type at the top. Each chart has its own
 symbol and timeframe; a chart added to the split shows the symbol of the one you work on, on the
 next timeframe up (M15, then H1, H4, D1...), so a top-down look takes one click.
+
+![Four charts of XAUUSD, H1 to W1, with the same drawings and the open trade on each](images/innachart-split.png)
 
 - Click a chart to work on it: it gets a blue edge, and the symbol and timeframe buttons, the
   watchlist, the order ticket and the drawing tools work on it.
@@ -150,7 +153,10 @@ The **+** keeps it open.
 follows from where the entry is (a buy below the price is a Buy Limit, above it a Buy Stop).
 
 **Open trades** of the chart's symbol show as dashed lines with their type, lots and profit, and the
-money you lose at the stop loss and make at the take profit:
+money you lose at the stop loss and make at the take profit, over a faint red zone (entry to stop
+loss) and a faint green one (entry to take profit), like a long or short position drawing. A
+**pending order** shows its entry line and price; its label, stop loss and take profit show while
+the mouse is on its line (a click on its label keeps them):
 
 - drag a stop loss or take profit line (or a pending order's entry) to change it: a card shows the
   new levels and the money at each, from MetaTrader 5, and changes nothing until **Confirm change**;

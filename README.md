@@ -3,10 +3,15 @@
 [![checks](https://github.com/deaguss/metatrade-5-modern-style/actions/workflows/checks.yml/badge.svg)](https://github.com/deaguss/metatrade-5-modern-style/actions/workflows/checks.yml)
 [![licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
 
-A clean, modern look for **MetaTrader 5 desktop** (Windows), and a risk-based order ticket that sits
-right on your chart.
+A clean, modern look for **MetaTrader 5 desktop** (Windows): **InnaChart**, a modern chart that opens
+on MetaTrader 5 with MetaTrader 5's candles, free drawing tools and an order ticket, and a risk-based order
+ticket that sits right on MetaTrader 5's own charts.
 
-![The ActionInna order ticket previewing a BUY on the chart](docs/images/ticket.png)
+![InnaChart: the chart, the order ticket previewing a BUY, an open position and a pending order](docs/images/innachart.png)
+
+![InnaChart split into four charts of one symbol, H1 to W1, sharing their drawings](docs/images/innachart-split.png)
+
+![The ActionInna order ticket previewing a BUY on a MetaTrader 5 chart](docs/images/ticket.png)
 
 ## What you get
 
@@ -18,11 +23,12 @@ right on your chart.
 - **ModernStyle script**. One click gives your chart a modern look: a near-black background, white
   and blue candles, no grid, and a price scale you can drag. It saves the look as a template, so any
   chart can use it.
-- <img src="docs/images/innachart-logo.svg" alt="" height="20"> **InnaChart**. A roomy, modern chart that sits right on MetaTrader 5's chart area and opens
-  with it, with MetaTrader 5's own candles, one chart or up to four: drawing tools with a floating
-  toolbar, long and short positions that work out your lots, your own drawing and chart templates,
-  and a network indicator in milliseconds. Trade from it too: its order ticket goes through the ActionInna EA, with the same
-  preview and Confirm. See [docs/innachart.md](docs/innachart.md).
+- <img src="docs/images/innachart-logo.svg" alt="" height="20"> **InnaChart**. A roomy, modern chart that sits right on MetaTrader 5's
+  chart area and opens with it, with MetaTrader 5's own candles, one chart or up to four: drawing
+  tools with a floating toolbar, long and short positions that work out your lots, your own drawing
+  and chart templates, and a network indicator in milliseconds. Trade from it too: its order ticket
+  goes through the ActionInna EA, with the same preview and Confirm. See
+  [docs/innachart.md](docs/innachart.md).
 - **A tidy window layout**. A short guide to a clean MetaTrader 5 window, and to the drawing tools
   MetaTrader 5 already has, free and without limits: [docs/layout.md](docs/layout.md).
 
