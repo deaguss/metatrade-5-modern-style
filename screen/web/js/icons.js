@@ -44,6 +44,7 @@ const I = {
   glue: '<rect x="3" y="3" width="18" height="18" rx="2"/><rect x="7" y="9" width="10" height="8" rx="1" fill="currentColor" fill-opacity=".3"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   minus: '<path d="M5 12h14"/>',
+  eraser: '<path d="M8.5 19.5L3.8 14.8a1.5 1.5 0 010-2.1l8.9-8.9a1.5 1.5 0 012.1 0l5.2 5.2a1.5 1.5 0 010 2.1L12 19.5H8.5zM8 9.5l6.5 6.5M12 19.5h8"/>',
   g1: '<rect x="3" y="4" width="18" height="16" rx="2"/>',
   g2v: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/>',
   g2h: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 12h18"/>',

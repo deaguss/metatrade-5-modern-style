@@ -258,6 +258,33 @@ const gridBtn = tbButton(icon('g1', 20), 'Split the screen: 1, 2, 3 or 4 charts 
 }, 'icon');
 const undoBtn = tbButton(icon('undo'), 'Undo (Ctrl+Z)', () => D.undo() && chart.invalidate(), 'icon');
 const redoBtn = tbButton(icon('redo'), 'Redo (Ctrl+Y)', () => D.redo() && chart.invalidate(), 'icon');
+// Clear the chart: its drawings, or those of every chart on the screen. Undo (Ctrl+Z) brings them back.
+const clearBtn = tbButton(icon('eraser', 20), 'Clear the chart: remove its drawings', (e) => {
+  const symbols = [...new Set(panes.filter((q) => q.D.items.length).map((q) => q.symbol))];
+  if (!symbols.length) {
+    toast('No drawings to clear');
+    return;
+  }
+  menuBelow([{ title: 'Clear' },
+    { label: 'The drawings on this chart (' + app.layout.symbol + ')', icon: 'trash', disabled: !D.items.length, action: () => clearCharts([active]) },
+    { label: 'The drawings on every chart on the screen', icon: 'trash', disabled: panes.length < 2, action: () => clearCharts(panes) },
+  ], e.currentTarget);
+}, 'icon');
+
+async function clearCharts(list) {
+  const withItems = list.filter((q) => q.D.items.length);
+  const symbols = [...new Set(withItems.map((q) => q.symbol))];
+  const count = symbols.reduce((n, sym) => n + withItems.find((q) => q.symbol === sym).D.items.length, 0);
+  if (!count) return;
+  if (!(await confirmBox({ title: 'Clear the chart', text: 'Remove ' + count + ' drawing' + (count > 1 ? 's' : '') + ' on ' + symbols.join(', ') + '? Undo (Ctrl+Z) on a chart brings its drawings back.' }))) return;
+  const done = new Set();
+  for (const q of withItems) {
+    if (done.has(q.symbol)) continue;   // charts of one symbol share their drawings
+    done.add(q.symbol);
+    q.D.removeAll();
+  }
+  invalidateAll();
+}
 const netBtn = tbButton('<span class="dot"></span><span class="ms">-- ms</span>', 'Network and speed', () => openNet(), 'net');
 const watchBtn = tbButton(icon('list'), 'Watchlist', () => {
   app.layout.watchlist = !app.layout.watchlist;
@@ -286,7 +313,7 @@ const logo = el('img', 'logo');
 logo.src = 'img/logo.svg';
 logo.alt = 'InnaChart';
 logo.title = 'InnaChart';
-top.append(logo, symbolBtn, sep(), tfBox, tfMore, sep(), typeBtn, gridBtn, sep(), undoBtn, redoBtn, grow(), netBtn, sep(), tradeBtn, watchBtn, settingsBtn, windowBtn, hideBtn);
+top.append(logo, symbolBtn, sep(), tfBox, tfMore, sep(), typeBtn, gridBtn, sep(), undoBtn, redoBtn, clearBtn, grow(), netBtn, sep(), tradeBtn, watchBtn, settingsBtn, windowBtn, hideBtn);
 
 function paintWindowBtn() {
   const separate = !!(feed && feed.separate);
@@ -1339,7 +1366,7 @@ function updateNotice() {
 // ---- keys -------------------------------------------------------------------------------------
 
 document.addEventListener('keydown', (e) => {
-  if (document.querySelector('.shade') || e.target.closest('input, textarea, select')) return;
+  if (document.querySelector('.shade') || (e.target.closest && e.target.closest('input, textarea, select'))) return;
   if (intervalBox) {
     if (/^[0-9a-z]$/i.test(e.key)) {
       typeInterval(e.key);
