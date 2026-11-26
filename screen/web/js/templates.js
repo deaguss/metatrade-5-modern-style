@@ -5,6 +5,9 @@ import { DEFAULT_STYLE } from './style.js';
 import { clone, merge } from './util.js';
 
 export const FORMAT = 'innachart-templates';
+// The same format under the program's name before 1.3 (Modern Screen): saved and exported files
+// keep that name and are read as they are.
+const OLD_FORMATS = ['modern-screen-templates'];
 
 export function emptyTemplates() {
   return { format: FORMAT, version: 1, chart: {}, tools: {}, defaults: { chart: null, tools: {} } };
@@ -16,7 +19,7 @@ export function readTemplates(data) {
   const out = emptyTemplates();
   let count = 0;
   let skipped = 0;
-  if (!data || typeof data !== 'object' || (data.format && data.format !== FORMAT)) return { templates: out, count, skipped: 1 };
+  if (!data || typeof data !== 'object' || (data.format && data.format !== FORMAT && !OLD_FORMATS.includes(data.format))) return { templates: out, count, skipped: 1 };
   const okName = (n) => typeof n === 'string' && n.trim().length > 0 && n.length <= 60;
   for (const [name, style] of Object.entries(data.chart || {})) {
     if (okName(name) && style && typeof style === 'object') {

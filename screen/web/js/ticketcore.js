@@ -7,6 +7,10 @@
 // refuses previews older than 60 s and re-checks everything when it sends.
 export const FRESH_MS = 3000;
 
+// When the price crosses a pending entry, the order turns into the other type (a sell limit into a
+// sell stop). Confirm then waits this long, so a press meant for the old type can't send the new one.
+export const TYPE_HOLD_MS = 2000;
+
 export function defaultForm(settings) {
   const s = settings || {};
   const presets = Array.isArray(s.presets) && s.presets.length ? s.presets : [1, 1.5, 2];
@@ -47,6 +51,7 @@ export function confirmState(st, now) {
   if (st.problem) return { ok: false, why: st.problem };
   if (!st.side) return { ok: false, why: 'Press BUY or SELL first' };
   if (st.sending) return { ok: false, why: 'Sending...' };
+  if (st.holdUntil && now < st.holdUntil) return { ok: false, why: 'The order type just changed: check it before you confirm' };
   if (!st.preview || !st.preview.plan) return { ok: false, why: 'Waiting for MT5\'s preview' };
   if (!st.preview.plan.valid) return { ok: false, why: st.preview.plan.err || 'MT5 does not accept this order' };
   if (st.preview.side !== st.side || st.preview.symbol !== st.symbol) return { ok: false, why: 'Waiting for MT5\'s preview' };
@@ -158,5 +163,11 @@ export function changeRequest(trade, which, price) {
   else if (which === 'open' && !trade.position) req.open = price;
   return req;
 }
+
+// Pips as the ticket and the chart show them: 20, or 12.5 (a decimal only when there is one).
+export const pipsText = (v) => (Math.abs(v - Math.round(v)) < 0.05 ? String(Math.round(v)) : v.toFixed(1));
+
+// Where an order filled against MT5's preview, in words: slip is in pips, above 0 worse.
+export const slipText = (slip) => Math.abs(slip).toFixed(1) + ' pips ' + (slip > 0 ? 'worse' : 'better') + ' than the preview';
 
 export const money = (v, digits = 2) => (Number.isFinite(v) ? (v < 0 ? '-' : v > 0 ? '+' : '') + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }) : '-');

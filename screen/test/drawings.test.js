@@ -205,6 +205,10 @@ test('templates: read, merge and start from', () => {
   const merged = mergeTemplates(emptyTemplates(), templates);
   assert.ok(merged.tools.long['10 10']);
   assert.equal(readTemplates({ format: 'something else' }).count, 0);
+  // saved and exported before the rename to InnaChart: still read
+  const old = readTemplates({ format: 'modern-screen-templates', version: 1, tools: { long: { '150 150': { stopDistance: 15, targetDistance: 15 } } } });
+  assert.equal(old.count, 1);
+  assert.ok(old.templates.tools.long['150 150']);
 });
 
 test('a template picked from the toolbar draws the next position with it', () => {

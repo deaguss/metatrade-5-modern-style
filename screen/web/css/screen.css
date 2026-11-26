@@ -100,6 +100,19 @@ button { cursor: pointer; }
   overflow-x: hidden;
 }
 .side .sep { width: 26px; height: 1px; background: var(--line); margin: 6px 0; flex: none; }
+.tools-grip { display: none; }
+/* floating over the chart, as in the prototype: one row (two when the chart is narrow), dragged by its grip */
+body.tools-float { grid-template-columns: 0 minmax(0, 1fr) auto; }
+.side.float {
+  position: absolute; z-index: 5; flex-direction: row; flex-wrap: wrap; align-items: center; width: max-content; max-width: calc(100% - 8px);
+  padding: 3px; gap: 1px; overflow: visible; background: #1a1a1a; border: 1px solid #2e2e2e; border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+.side.float .sep { width: 1px; height: 20px; margin: 0 3px; }
+.side.float .tool { width: 34px; height: 32px; }
+.side.float .tool .more svg { transform: none; }
+.side.float .tools-grip { display: grid; place-items: center; width: 16px; height: 32px; color: #6b6b6b; cursor: grab; touch-action: none; }
+.side.float .tools-grip:active { cursor: grabbing; }
 .tool { position: relative; width: 38px; height: 34px; border: 0; border-radius: 5px; background: transparent; color: var(--text); display: grid; place-items: center; flex: none; }
 .tool:hover { background: var(--hover); }
 .tool.on { color: var(--accent-text); background: rgba(41, 98, 255, 0.12); }

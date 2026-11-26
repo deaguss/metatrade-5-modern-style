@@ -2,7 +2,7 @@
 // the money at each, dragged to change them) and the open trades of the chart's symbol (dragged to
 // open a change card, x to close or remove). Drawn after the drawings, hit before them.
 import { formatPrice, textOn } from './util.js';
-import { tradesOf } from './ticketcore.js';
+import { tradesOf, pipsText } from './ticketcore.js';
 
 const COL = { tp: '#089981', sl: '#f23645', entry: '#787b86', buy: '#2962ff', sell: '#f23645', chip: '#161616', edge: '#4a4a4a' };
 const FONT = '12px "Trebuchet MS", Arial, sans-serif';
@@ -42,11 +42,22 @@ export class TradeLayer {
     return rects;
   }
 
-  // Where a row of chips ends: at xr, or left of the ticket when the ticket covers that spot.
-  chipRight(y, xr) {
+  // The width of a row of chips.
+  width(g, parts) {
+    g.font = FONT;
+    return parts.reduce((w, p) => w + Math.ceil(g.measureText(p.t).width) + 14, 0);
+  }
+
+  // Draws a row of chips ending at xr, unless the ticket covers that spot: then left of the ticket,
+  // or right of it when there is no room on its left. Returns each chip's rectangle.
+  row(c, xr, y, parts) {
     const r = this.t.rect ? this.t.rect() : null;
-    if (!r) return xr;
-    return xr > r.x - 4 && xr - 260 < r.x + r.w && y >= r.y - 12 && y <= r.y + r.h + 12 ? Math.min(xr, r.x - 8) : xr;
+    const w = this.width(c.g, parts);
+    let x = xr;
+    if (r && xr > r.x - 4 && xr - w < r.x + r.w + 4 && y >= r.y - 12 && y <= r.y + r.h + 12) {
+      x = r.x - 8 - w >= 2 ? Math.min(xr, r.x - 8) : Math.min(c.w - 2, r.x + r.w + 8 + w);
+    }
+    return this.chips(c.g, x, y, parts);
   }
 
   level(c, price, color, dashed) {
@@ -93,12 +104,12 @@ export class TradeLayer {
         const m = tr[which + 'Money'];
         const money = Number.isFinite(m) && !moved(which) && !moved('open');
         const up = money ? m >= 0 : which === 'tp';
-        this.chips(g, this.chipRight(y, X), y, [{ t: which.toUpperCase(), bg: color }, { t: money ? cash(m) : fmt(p), fg: up ? '#22ab94' : '#ff6b76', bg: COL.chip, bd: color }]);
+        this.row(c, X, y, [{ t: which.toUpperCase(), bg: color }, { t: money ? cash(m) : fmt(p), fg: up ? '#22ab94' : '#ff6b76', bg: COL.chip, bd: color }]);
         c.priceTags.push({ y, text: fmt(p), bg: color });
         if (!tr.locked) this.lines.push({ y, kind: 'trade', which, trade: tr });
       }
       // the entry's chips last: over the stop's and target's when the lines are close, x on top
-      const r = this.chips(g, this.chipRight(ye, X), ye, parts);
+      const r = this.row(c, X, ye, parts);
       const x = r[r.length - 1];
       this.hits.push({ ...x, fn: () => (tr.position ? this.t.openClose(tr) : this.t.cancelOrder(tr)) });
     }
@@ -111,19 +122,19 @@ export class TradeLayer {
       g.globalAlpha = pv.stale ? 0.6 : 1;
       if (pv.tp > 0) {
         const y = this.level(c, pv.tp, COL.tp, false);
-        this.chips(g, this.chipRight(y, X), y, [{ t: 'TP', bg: COL.tp }, { t: cash(plan.rewardMoney) + dot + (plan.tpPips || 0).toFixed(1) + ' pips', fg: '#22ab94', bg: COL.chip, bd: COL.tp }]);
+        this.row(c, X, y, [{ t: 'TP', bg: COL.tp }, { t: cash(plan.rewardMoney) + dot + pipsText(plan.tpPips || 0) + ' pips', fg: '#22ab94', bg: COL.chip, bd: COL.tp }]);
         c.priceTags.push({ y, text: fmt(pv.tp), bg: COL.tp });
         this.lines.push({ y, kind: 'preview', which: 'tp' });
       }
       if (pv.sl > 0) {
         const y = this.level(c, pv.sl, COL.sl, false);
-        this.chips(g, this.chipRight(y, X), y, [{ t: 'SL', bg: COL.sl }, { t: cash(-plan.riskMoney) + dot + (plan.slPips || 0).toFixed(1) + ' pips', fg: '#ff6b76', bg: COL.chip, bd: COL.sl }]);
+        this.row(c, X, y, [{ t: 'SL', bg: COL.sl }, { t: cash(-plan.riskMoney) + dot + pipsText(plan.slPips || 0) + ' pips', fg: '#ff6b76', bg: COL.chip, bd: COL.sl }]);
         c.priceTags.push({ y, text: fmt(pv.sl), bg: COL.sl });
         this.lines.push({ y, kind: 'preview', which: 'sl' });
       }
       const y = this.level(c, pv.entry, COL.entry, false);
       const lots = plan.lots > 0 ? plan.lots.toFixed(this.t.lotDigits) + ' lots @ ' : '';
-      this.chips(g, this.chipRight(y, X), y, [{ t: plan.type || (pv.side > 0 ? 'BUY' : 'SELL'), bg: pv.side > 0 ? COL.buy : COL.sell }, { t: lots + fmt(pv.entry), fg: '#d1d4dc', bg: COL.chip, bd: COL.edge }]);
+      this.row(c, X, y, [{ t: plan.type || (pv.side > 0 ? 'BUY' : 'SELL'), bg: pv.side > 0 ? COL.buy : COL.sell }, { t: lots + fmt(pv.entry), fg: '#d1d4dc', bg: COL.chip, bd: COL.edge }]);
       c.priceTags.push({ y, text: fmt(pv.entry), bg: COL.entry });
       this.lines.push({ y, kind: 'preview', which: 'entry' });
       g.globalAlpha = 1;

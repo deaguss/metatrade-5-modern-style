@@ -49,10 +49,11 @@ From then on, opening MetaTrader 5 is enough: the service starts with it, and th
 
 ### Drawing
 
-The tools are on the left: lines (trend line, ray, extended line, horizontal line and ray, vertical
-line, parallel channel), Fibonacci retracement, shapes (rectangle, rotated rectangle, triangle, path,
-arrow), text, long and short positions, and price and date ranges. The small arrow on a tool shows
-the others in its group.
+The tools are in a bar that floats over the chart: drag it by its dotted grip to put it anywhere (it
+stays there), or press its last button to dock it on the left instead. They are lines (trend line,
+ray, extended line, horizontal line and ray, vertical line, parallel channel), Fibonacci retracement,
+shapes (rectangle, rotated rectangle, triangle, path, arrow), text, long and short positions, and
+price and date ranges. The small arrow on a tool shows the others in its group.
 
 - Click where the drawing starts and click where it ends, or press, drag and let go.
 - A path takes one click per point; double-click or press Enter to end it.
@@ -60,7 +61,7 @@ the others in its group.
 - The **floating toolbar** above a selected drawing changes its colours, line width and style, holds
   its templates and settings, locks it and removes it. Drag it by its dots to put it elsewhere.
 - Right-click a drawing for more: clone, copy, bring to front, send to back, save as a template.
-- Below the tools: the **magnet** (points snap to the open, high, low or close), **keep drawing**
+- After the tools: the **magnet** (points snap to the open, high, low or close), **keep drawing**
   with the same tool, **lock** and **hide** every drawing, and **remove** every drawing.
 
 Drawings are kept per symbol and show on every timeframe. Undo and redo with `Ctrl+Z` and `Ctrl+Y`.

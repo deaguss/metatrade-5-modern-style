@@ -7,11 +7,9 @@ import { el, esc, dragBy, toast, confirmBox } from './ui.js';
 import { icon } from './icons.js';
 import { formatPrice, clamp, debounce } from './util.js';
 import { tfLabel } from './timeframes.js';
-import { defaultForm, previewRequest, confirmState, FRESH_MS, stepLevel, stepRisk, pendingEntry, money, nextUnit } from './ticketcore.js';
+import { defaultForm, previewRequest, confirmState, FRESH_MS, TYPE_HOLD_MS, stepLevel, stepRisk, pendingEntry, money, nextUnit, pipsText, slipText } from './ticketcore.js';
 
 const ACCOUNT_WORD = { demo: 'DEMO', real: 'REAL', contest: 'CONTEST' };
-// Pips as the ticket shows them: 20, or 12.5 (one decimal only when there is one).
-const pips = (v) => (Math.abs(v - Math.round(v)) < 0.05 ? String(Math.round(v)) : v.toFixed(1));
 const MODE_LABEL = { pips: 'pips', price: 'price', r: 'R', percent: '%', money: '$', lots: 'lot' };
 
 // A field with - and + inside its box, as the prototype draws it.
@@ -42,6 +40,7 @@ export class Ticket {
     this.again = false;
     this.sending = false;
     this.flash = null;         // {text, level, until}: the last send's result
+    this.holdUntil = 0;        // Confirm waits until then after the order's type changed
     this.recallIndex = { sl: -1, tp: -1 };
     this.card = null;          // the open change or close card
     this.build();
@@ -120,14 +119,14 @@ export class Ticket {
       const b = e.target.closest('button');
       if (!b) return;
       this.form.pending = b.dataset.v === 'pending';
-      if (this.form.pending && !this.form.entry) this.form.entry = this.defaultEntry(this.side || 1);
+      if (this.form.pending && (!this.form.entry || this.entryAuto)) this.placeEntry(this.side || 1);
       this.changed();
     });
     tk.querySelectorAll('.tk-in').forEach((input) => input.addEventListener('change', () => {
       const v = Number(String(input.value).trim().replace(',', '.'));
       if (Number.isFinite(v) && v > 0) {
         const k = input.dataset.k;
-        if (k === 'entry') this.form.entry = v;
+        if (k === 'entry') [this.form.entry, this.entryAuto] = [v, false];
         else if (k === 'risk') this.form.riskValue = v;
         else if (k === 'sl') this.form.slValue = v;
         else this.form.tpValue = v;
@@ -217,6 +216,12 @@ export class Ticket {
     return ccy === 'USD' || !ccy ? sign + '$' + num : sign + num + ' ' + ccy;
   }
 
+  // A pending order's entry, placed for the side on its limit side, until the trader moves it.
+  placeEntry(side) {
+    this.form.entry = this.defaultEntry(side);
+    this.entryAuto = true;
+  }
+
   defaultEntry(side) {
     const s = this.term && this.term.settings ? this.term.settings.pendingOffsetPips : 10;
     return pendingEntry(side, this.bid, this.ask, s, this.pip, this.digits);
@@ -263,6 +268,12 @@ export class Ticket {
     this.bid = NaN;
     this.ask = NaN;
     this.recallIndex = { sl: -1, tp: -1 };
+    // another symbol's prices mean nothing here: a pending entry, or a level typed as a price
+    this.form.entry = 0;
+    this.entryAuto = false;
+    const d = defaultForm(this.term ? this.term.settings : null);
+    if (this.form.slMode === 'price') [this.form.slMode, this.form.slValue] = ['pips', d.slValue];
+    if (this.form.tpMode === 'price') [this.form.tpMode, this.form.tpValue] = d.tpMode === 'price' ? ['r', 2] : [d.tpMode, d.tpValue];
     if (this.linked) this.watch();
     this.paint();
   }
@@ -296,7 +307,7 @@ export class Ticket {
     this.side = side;
     this.preview = null;
     this.flash = null;
-    if (this.form.pending && !this.form.entry) this.form.entry = this.defaultEntry(side);
+    if (this.form.pending && (!this.form.entry || this.entryAuto)) this.placeEntry(side);
     this.changed();
   }
 
@@ -309,7 +320,7 @@ export class Ticket {
     if (k === 'risk') this.form.riskValue = stepRisk(this.form.riskMode, this.form.riskValue, dir, this.spec ? this.spec.volStep : 0.01);
     else if (k === 'sl') this.form.slValue = stepLevel(this.form.slMode, this.form.slValue, dir, this.pip, this.digits);
     else if (k === 'tp') this.form.tpValue = stepLevel(this.form.tpMode, this.form.tpValue, dir, this.pip, this.digits);
-    else if (k === 'entry') this.form.entry = Number(((Number(this.form.entry) || 0) + dir * this.pip).toFixed(this.digits));
+    else if (k === 'entry') [this.form.entry, this.entryAuto] = [Number(((Number(this.form.entry) || 0) + dir * this.pip).toFixed(this.digits)), false];
     this.changed();
   }
 
@@ -382,6 +393,7 @@ export class Ticket {
     } else if (which === 'entry') {
       this.form.pending = true;
       this.form.entry = p;
+      this.entryAuto = false;
     }
     this.changed();
   }
@@ -400,8 +412,15 @@ export class Ticket {
     try {
       const r = await this.feed.request(previewRequest(this.form, symbol, side), 10000);
       if (this.side === side && this.symbol === symbol) {
+        const old = this.preview && this.preview.plan && this.preview.plan.valid && this.preview.side === side && this.preview.symbol === symbol ? this.preview.plan.type : '';
         this.preview = r.ok ? { pid: r.preview, plan: r.plan, at: Date.now(), side, symbol } : { pid: '', plan: { valid: false, err: r.err }, at: Date.now(), side, symbol };
         if (r.ok && r.plan && r.plan.valid) this.lastPlan = { symbol, plan: r.plan };
+        // the price crossed the pending entry: say so, and hold Confirm a moment
+        if (r.ok && r.plan && r.plan.valid && old && r.plan.type !== old) {
+          this.holdUntil = Date.now() + TYPE_HOLD_MS;
+          this.flash = { text: 'Now a ' + r.plan.type + ': the price crossed the entry. Check it before you confirm', level: 1, until: Date.now() + 6000 };
+          setTimeout(() => this.paintConfirm(), TYPE_HOLD_MS + 50);
+        }
       }
     } catch (e) {
       if (this.side === side) this.preview = { pid: '', plan: { valid: false, err: e.message }, at: Date.now(), side, symbol };
@@ -416,7 +435,7 @@ export class Ticket {
   }
 
   state() {
-    return { linked: this.linked, problem: this.problem(), side: this.side, symbol: this.symbol, sending: this.sending, preview: this.preview };
+    return { linked: this.linked, problem: this.problem(), side: this.side, symbol: this.symbol, sending: this.sending, preview: this.preview, holdUntil: this.holdUntil };
   }
 
   problem() {
@@ -440,7 +459,7 @@ export class Ticket {
       if (r.ok) {
         const f = r.fill || {};
         const text = r.type + ' ' + r.lots + ' ' + this.symbol + (r.pending ? ' placed at ' : ' filled at ') + formatPrice(r.price, this.digits) +
-          (f.slipped ? ' (' + f.slipPips + ' pips from the preview' + (f.slMoved ? '; SL and TP moved with it' : '') + ')' : '');
+          (f.slipped ? ' (' + slipText(f.slipPips) + (f.slMoved ? '; SL and TP moved with it' : '') + ')' : '');
         this.flash = { text, level: 3, until: Date.now() + 6000 };
         toast(text, 5000);
         this.cancel();
@@ -578,7 +597,7 @@ export class Ticket {
       this.$.reward.textContent = this.cash(plan.rewardMoney);
       this.$.rewardp.textContent = '(' + plan.rewardPct.toFixed(2) + '%)';
       this.$.rr.textContent = '1:' + plan.rr.toFixed(2);
-      this.$.dist.textContent = 'SL ' + pips(plan.slPips) + ' \u00b7 TP ' + pips(plan.tpPips);
+      this.$.dist.textContent = 'SL ' + pipsText(plan.slPips) + ' \u00b7 TP ' + pipsText(plan.tpPips);
       this.$.pipv.textContent = this.cash(plan.pipValue, false);
       this.$.margin.textContent = this.cash(plan.margin, false);
       this.$.free.textContent = '(free ' + this.cash(plan.freeAfter, false) + ')';

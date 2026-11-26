@@ -366,17 +366,20 @@ export function dialog({ title, tabs, footerLeft, onOk, onCancel, width = 440 })
   return { el: d, close };
 }
 
-// Lets the user move box by dragging handle.
+// Lets the user move box by dragging handle. A box placed inside another (position: absolute) moves
+// in that one's pixels and stays inside it; a fixed one (a dialog) in the window's.
 export function dragBy(handle, box, onEnd) {
   handle.addEventListener('pointerdown', (e) => {
     if (e.target.closest('button')) return;
     const r = box.getBoundingClientRect();
     const dx = e.clientX - r.left;
     const dy = e.clientY - r.top;
+    const parent = getComputedStyle(box).position === 'fixed' ? null : box.offsetParent;
+    const p = parent ? parent.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
     handle.setPointerCapture(e.pointerId);
     const move = (ev) => {
-      box.style.left = clamp(ev.clientX - dx, 0, window.innerWidth - r.width) + 'px';
-      box.style.top = clamp(ev.clientY - dy, 0, window.innerHeight - 30) + 'px';
+      box.style.left = clamp(ev.clientX - dx - p.left, 0, Math.max(0, p.width - r.width)) + 'px';
+      box.style.top = clamp(ev.clientY - dy - p.top, 0, Math.max(0, p.height - Math.min(r.height, 30))) + 'px';
       box.style.transform = 'none';
     };
     const up = () => {

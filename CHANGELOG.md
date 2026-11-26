@@ -25,6 +25,22 @@ All notable changes to MetaTrader 5 Modern Style are recorded here. The format f
 - InnaChart's watchlist is your own list: add symbols, remove them, drag them into your
   order, sort by a column, group them in sections; Last, Chg and Chg% columns; arrow keys step
   through it; its panel can be made wider or narrower by dragging its edge.
+- The drawing tools float over the chart in a bar you drag anywhere, as in the prototype (the chart
+  gets the room the column on the left took); its last button docks them on the left again.
+
+### Fixed
+
+- Drawing and chart templates saved or exported before the rename to InnaChart are read again (they
+  were left out, so a right-click on a tool showed no templates).
+- The ticket and the drawing toolbar no longer jump by the width of the toolbar and the height of
+  the top bar when you start dragging them.
+- A tool group's button shows the tool it will draw with (the one picked last) from the start.
+- A trade's labels on the chart move to the right of the ticket when there is no room on its left,
+  instead of going off the chart.
+- A pending order's entry, until you change it, follows the side you pick (a sell limit above the
+  price, a buy limit under it); another symbol's entry or price levels are not kept.
+- When the price crosses a pending entry and the order turns into the other type (a limit into a
+  stop), the ticket says so and Confirm waits 2 seconds.
 
 ## [1.2.0] - 2026-11-25
 

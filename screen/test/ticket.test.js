@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { defaultForm, previewRequest, confirmState, FRESH_MS, stepLevel, stepRisk, pendingEntry, tradesOf, changeRequest, money, nextUnit } from '../web/js/ticketcore.js';
+import { defaultForm, previewRequest, confirmState, FRESH_MS, TYPE_HOLD_MS, stepLevel, stepRisk, pendingEntry, tradesOf, changeRequest, money, nextUnit, pipsText, slipText } from '../web/js/ticketcore.js';
 
 const SETTINGS = { presets: [1, 1.5, 2], riskBase: 'equity', defaultSLPips: 20, defaultTPMode: 'r', defaultTPValue: 2, pendingOffsetPips: 10 };
 
@@ -78,6 +78,14 @@ test('the unit buttons keep the order what it was', () => {
   assert.deepEqual(nextUnit('tp', 'price', 2660, null, { ...ctx, side: 0 }), { mode: 'r', value: 2 }, 'no side: back to the default');
 });
 
+test('Confirm waits a moment after the order turned into the other type', () => {
+  const st = { linked: true, problem: '', side: -1, symbol: 'XAUUSD', sending: false, preview: { pid: 'p1', plan: { valid: true, type: 'SELL STOP' }, at: 1000, side: -1, symbol: 'XAUUSD' } };
+  assert.equal(confirmState({ ...st, holdUntil: 1000 + TYPE_HOLD_MS }, 1500).ok, false, 'held');
+  assert.match(confirmState({ ...st, holdUntil: 1000 + TYPE_HOLD_MS }, 1500).why, /type just changed/);
+  assert.equal(confirmState({ ...st, holdUntil: 1000 + TYPE_HOLD_MS, preview: { ...st.preview, at: 3000 } }, 3100).ok, true, 'free again after the hold');
+  assert.equal(confirmState({ ...st, holdUntil: 0 }, 1500).ok, true, 'no hold');
+});
+
 test('a pending order starts its offset away, on the limit side', () => {
   assert.equal(pendingEntry(1, 2650, 2650.3, 10, 0.1, 2), 2649.3);
   assert.equal(pendingEntry(-1, 1.085, 1.0851, 10, 0.0001, 5), 1.086);
@@ -101,4 +109,9 @@ test('trades on the chart, and what dragging their lines asks', () => {
   assert.equal(changeRequest(mine[0], 'open', 2600).open, undefined, 'a position\'s entry can\'t move');
   assert.equal(money(-1234.5), '-1,234.50');
   assert.equal(money(12), '+12.00');
+  assert.equal(pipsText(150), '150');
+  assert.equal(pipsText(12.5), '12.5');
+  assert.equal(pipsText(19.98), '20');
+  assert.equal(slipText(-5.5), '5.5 pips better than the preview');
+  assert.equal(slipText(2), '2.0 pips worse than the preview');
 });

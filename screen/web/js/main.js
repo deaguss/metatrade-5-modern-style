@@ -8,7 +8,7 @@ import { TOOLS, GROUPS } from './tools.js';
 import { CHART_FIELDS, CHART_TYPES, getPath, setPath } from './style.js';
 import { TIMEFRAMES, FAVORITES, tfLabel, isTimeframe, parseInterval } from './timeframes.js';
 import { emptyTemplates, readTemplates, mergeTemplates, toolStart, chartStart } from './templates.js';
-import { clone, debounce, drawingsFile, formatPrice, merge, withAlpha } from './util.js';
+import { clamp, clone, debounce, drawingsFile, formatPrice, merge, withAlpha } from './util.js';
 import { icon } from './icons.js';
 import { Watchlist } from './watchlist.js';
 import { Ticket } from './ticket.js';
@@ -36,6 +36,8 @@ const LAYOUT_DEFAULT = {
   stay: false,
   ftb: null,
   groupTool: {},
+  toolsFloat: true,    // the drawing tools float over the chart (the prototype's bar), or dock at the left
+  toolsPos: null,      // where the floating bar is, in the chart area's pixels
 };
 
 const app = {
@@ -164,8 +166,12 @@ function chooseFavorites() {
   });
 }
 
-// ---- the left toolbar -------------------------------------------------------------------------
+// ---- the drawing tools: a bar floating over the chart, or docked at the left -------------------
 
+const chartWrap = document.getElementById('chart-wrap');
+const toolsGrip = el('div', 'tools-grip', icon('grip', 16));
+toolsGrip.title = 'Drag to move the drawing tools';
+left.appendChild(toolsGrip);
 const cursorBtn = el('button', 'tool', icon('cursor'));
 cursorBtn.title = 'Cursor (Esc)';
 cursorBtn.addEventListener('click', () => D.setTool(null));
@@ -183,7 +189,13 @@ for (const g of GROUPS) {
   };
   const flyout = () => {
     const r = b.getBoundingClientRect();
-    menu(groupMenu(g), r.right + 4, r.top);
+    if (!toolsFloating()) {
+      menu(groupMenu(g), r.right + 4, r.top);
+      return;
+    }
+    // under the floating bar, or over it when the bar is low on the screen
+    const m = menu(groupMenu(g), r.left, r.bottom + 4);
+    if (m.offsetTop < r.bottom) m.style.top = Math.max(4, r.top - 4 - m.offsetHeight) + 'px';
   };
   b.addEventListener('click', (e) => {
     if (e.target.closest('.more')) {
@@ -217,6 +229,55 @@ removeBtn.addEventListener('click', async () => {
   }
 });
 left.appendChild(removeBtn);
+const dockToolsBtn = el('button', 'tool tools-dock');
+dockToolsBtn.type = 'button';
+dockToolsBtn.addEventListener('click', () => {
+  app.layout.toolsFloat = !toolsFloating();
+  app.layout.toolsPos = null;
+  saveLayout();
+  placeTools();
+});
+left.appendChild(dockToolsBtn);
+
+function toolsFloating() {
+  return app.layout.toolsFloat !== false;
+}
+
+// Floating: inside the chart area, where the trader dragged it (at first low on the left, clear of
+// the ticket); docked: the column at the left, as before.
+function placeTools() {
+  const float = toolsFloating();
+  document.body.classList.toggle('tools-float', float);
+  left.classList.toggle('float', float);
+  if (float && left.parentElement !== chartWrap) chartWrap.appendChild(left);
+  if (!float && left.parentElement !== document.body) document.body.insertBefore(left, chartWrap);
+  dockToolsBtn.innerHTML = icon(float ? 'glue' : 'popout', 18);
+  dockToolsBtn.title = float ? 'Dock the drawing tools at the left' : 'Float the drawing tools over the chart';
+  if (float) keepToolsIn();
+  else {
+    left.style.left = '';
+    left.style.top = '';
+  }
+}
+
+function keepToolsIn() {
+  if (!toolsFloating()) return;
+  const W = chartWrap.clientWidth;
+  const H = chartWrap.clientHeight;
+  const p = app.layout.toolsPos;
+  const x = p ? p.x : 8;
+  const y = p ? p.y : H - left.offsetHeight - 40;
+  left.style.left = clamp(x, 0, Math.max(0, W - left.offsetWidth)) + 'px';
+  left.style.top = clamp(y, 0, Math.max(0, H - left.offsetHeight)) + 'px';
+}
+
+dragBy(toolsGrip, left, (box) => {
+  app.layout.toolsPos = { x: box.offsetLeft, y: box.offsetTop };
+  saveLayout();
+  if (!ftb.hidden) placeFtb();
+});
+new ResizeObserver(() => keepToolsIn()).observe(chartWrap);
+placeTools();   // as the default layout says, until the saved one is read
 
 function toggleTool(name, title, flip) {
   const b = el('button', 'tool', icon(name));
@@ -351,6 +412,15 @@ function placeFtb() {
   const y = p ? Math.min(p.y, wrap.clientHeight - 44) : 44;
   ftb.style.left = Math.max(4, x) + 'px';
   ftb.style.top = Math.max(4, y) + 'px';
+  // clear of the floating drawing tools: under them, or over them when there is no room under
+  if (toolsFloating()) {
+    const a = { x: ftb.offsetLeft, y: ftb.offsetTop, w: ftb.offsetWidth, h: ftb.offsetHeight };
+    const b = { x: left.offsetLeft, y: left.offsetTop, w: left.offsetWidth, h: left.offsetHeight };
+    if (a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h) {
+      const below = b.y + b.h + 6;
+      ftb.style.top = (below + a.h <= wrap.clientHeight - 4 ? below : Math.max(4, b.y - a.h - 6)) + 'px';
+    }
+  }
 }
 
 function drawingMenu(it) {
@@ -1145,6 +1215,8 @@ async function start() {
   renderTop();
   paintWindowBtn();
   if (ticket) ticket.applyLayout();
+  for (const b of groupBtns.values()) b.paint();   // each group's last tool, from the saved layout
+  placeTools();
   paintTools();
   paintCorner();
   renderLegend();
