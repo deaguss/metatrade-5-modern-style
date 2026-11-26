@@ -17,6 +17,9 @@ export class TradeLayer {
     this.hits = [];     // chips' buttons from the last frame: {x, y, w, h, fn}
     this.lines = [];    // draggable lines from the last frame: {y, kind, which, trade}
     this.drag = null;
+    this.placed = [];
+    this.entries = [];
+    this.pinned = 0;    // the trade shown in full after a click on its label, until clicked again
   }
 
   // A row of chips ending at xr, centred on y; returns each chip's rectangle.
@@ -63,6 +66,14 @@ export class TradeLayer {
     if (r && xr > r.x - 4 && xr - w < r.x + r.w + 4 && y >= r.y - 12 && y <= r.y + r.h + 12) {
       x = r.x - 8 - w >= 2 ? Math.min(xr, r.x - 8) : Math.min(c.w - 2, r.x + r.w + 8 + w);
     }
+    // Two rows at nearly the same price (two trades opened close together) would hide each other:
+    // the later one goes to the left of the one already there.
+    for (let k = 0; k < 6; k++) {
+      const hit = this.placed.find((p) => Math.abs(p.y - y) < 20 && x > p.x - 4 && x - w < p.x + p.w + 4);
+      if (!hit) break;
+      x = hit.x - 6;
+    }
+    this.placed.push({ x: x - w, y, w });
     return this.chips(c.g, x, y, parts);
   }
 
@@ -82,8 +93,19 @@ export class TradeLayer {
   }
 
   draw(c) {
+    // Open positions show in full. A pending order shows its entry line only, faint, until the mouse
+    // is on it (or its label was clicked): then its label, stop and target show too.
+    let hover = 0;
+    if (c.mouse) {
+      const chip = this.hitChip(c.mouse.x, c.mouse.y);
+      const line = chip ? null : this.hitLine(c.mouse.y) || this.hitNear(this.entries, c.mouse.y);
+      const t = (chip && chip.trade) || (line && line.trade);
+      hover = t ? t.ticket : 0;
+    }
     this.hits = [];
     this.lines = [];
+    this.placed = [];   // the rows of chips drawn so far this frame
+    this.entries = [];  // every trade's entry line: the mouse on one shows that trade in full
     const g = c.g;
     const fmt = (p) => formatPrice(p, c.digits);
     const cash = (v) => this.t.cash(v);
@@ -92,33 +114,45 @@ export class TradeLayer {
     const pc = this.t.pendingChange();
     const X = Math.round(c.w * 0.62);
     const symbol = this.where.symbol();
-    for (const tr of tradesOf(this.t.trades, symbol)) {
+    const full = (tr) => tr.position || tr.ticket === hover || tr.ticket === this.pinned || !!(pc && pc.ticket === tr.ticket);
+    const trades = tradesOf(this.t.trades, symbol).sort((a, b) => full(a) - full(b));   // the one in full on top
+    for (const tr of trades) {
+      const shown = full(tr);
       const lvl = (which) => (pc && pc.ticket === tr.ticket && pc.which === which ? pc.price : which === 'open' ? tr.open : tr[which]);
       const moved = (which) => pc && pc.ticket === tr.ticket && pc.which === which;
+      g.globalAlpha = shown ? 1 : 0.45;
       const ye = this.level(c, lvl('open'), tr.position ? COL.entry : COL.buy, true);
+      g.globalAlpha = 1;
+      this.entries.push({ y: ye, trade: tr });
       const sideBg = tr.side > 0 ? COL.buy : COL.sell;
       const parts = [{ t: tr.type + ' ' + Number(tr.lots).toFixed(this.t.lotDigits), bg: sideBg }];
       parts.push(tr.position ? { t: cash(tr.profit), fg: tr.profit >= 0 ? '#22ab94' : '#ff6b76', bg: COL.chip, bd: COL.edge } : { t: 'pending', fg: '#b2b5be', bg: COL.chip, bd: COL.edge });
       parts.push({ t: 'x', fg: '#b2b5be', bg: COL.chip, bd: COL.edge });
       if (!tr.position && !tr.locked) this.lines.push({ y: ye, kind: 'trade', which: 'open', trade: tr });
+      if (!shown) continue;   // a pending order out of focus: its faint line only
       c.priceTags.push({ y: ye, text: fmt(lvl('open')), bg: tr.position ? COL.entry : COL.buy });
       for (const which of ['sl', 'tp']) {
         const p = lvl(which);
         if (!(p > 0)) continue;
         const color = which === 'sl' ? COL.sl : COL.tp;
         const y = this.level(c, p, color, true);
+        c.priceTags.push({ y, text: fmt(p), bg: color });
+        if (!tr.locked) this.lines.push({ y, kind: 'trade', which, trade: tr });
         // the money there from MT5; the price while the line is being changed (the card has the money)
         const m = tr[which + 'Money'];
         const money = Number.isFinite(m) && !moved(which) && !moved('open');
         const up = money ? m >= 0 : which === 'tp';
         this.row(c, X, y, [{ t: which.toUpperCase(), bg: color }, { t: money ? cash(m) : fmt(p), fg: up ? '#22ab94' : '#ff6b76', bg: COL.chip, bd: color }]);
-        c.priceTags.push({ y, text: fmt(p), bg: color });
-        if (!tr.locked) this.lines.push({ y, kind: 'trade', which, trade: tr });
       }
       // the entry's chips last: over the stop's and target's when the lines are close, x on top
       const r = this.row(c, X, ye, parts);
       const x = r[r.length - 1];
-      this.hits.push({ ...x, fn: () => (tr.position ? this.t.openClose(tr) : this.t.cancelOrder(tr)) });
+      this.hits.push({ ...x, trade: tr, fn: () => (tr.position ? this.t.openClose(tr) : this.t.cancelOrder(tr)) });
+      // a click on the label keeps the trade in full (its stop and target labels), again to let go
+      const body = r[r.length - 2];
+      this.hits.push({ x: r[0].x, y: r[0].y, w: body.x + body.w - r[0].x, h: r[0].h, trade: tr, fn: () => {
+        this.pinned = this.pinned === tr.ticket ? 0 : tr.ticket;
+      } });
     }
     // the order being previewed
     const pv = symbol === this.t.symbol ? this.t.previewLines() : null;
@@ -156,8 +190,12 @@ export class TradeLayer {
   }
 
   hitLine(y) {
+    return this.hitNear(this.lines, y);
+  }
+
+  hitNear(lines, y) {
     let best = null;
-    for (const l of this.lines) {
+    for (const l of lines || []) {
       const d = Math.abs(l.y - y);
       if (d <= 5 && (!best || d < best.d)) best = { ...l, d };
     }

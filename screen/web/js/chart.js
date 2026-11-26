@@ -107,6 +107,9 @@ export class Chart {
     setPixelRatio(dpr);
     this.layout();
     this.dirty = true;
+    // A new size clears the canvas: drawn again at once (before the screen shows it), not on the
+    // next frame, so the chart does not flicker while a panel beside it is dragged.
+    if (this.alive) this.render();
   }
 
   // A 1-pixel line's centre on the screen's pixel grid, in CSS pixels.
@@ -198,6 +201,7 @@ export class Chart {
       bars: (t1, t2) => Math.round(Math.abs(s.indexAt(t2) - s.indexAt(t1))),
       duration: (t1, t2) => duration(Math.abs(t2 - t1)),
       toPoint: (x, y, magnet) => this.pointAt(x, y, magnet),
+      mouse: this.mouse && this.mouse.area === 'plot' ? { x: this.mouse.x, y: this.mouse.y } : null,
     };
   }
 

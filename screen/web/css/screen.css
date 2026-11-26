@@ -282,6 +282,8 @@ body.tools-float { grid-template-columns: 0 minmax(0, 1fr) auto; }
 .watch-cols, .watch-row { display: grid; grid-template-columns: minmax(60px, 1fr) 84px 70px 62px; gap: 6px; padding: 0 12px; align-items: center; }
 .watch.narrow .watch-cols, .watch.narrow .watch-row { grid-template-columns: minmax(60px, 1fr) 84px 62px; }
 .watch.narrow .c-chg, .watch.narrow .ch { display: none; }
+.watch.tiny .watch-cols, .watch.tiny .watch-row { grid-template-columns: minmax(50px, 1fr) 76px; gap: 4px; padding: 0 8px; }
+.watch.tiny .c-pct, .watch.tiny .c { display: none; }
 .watch-cols { height: 28px; }
 .watch-col { border: 0; background: transparent; padding: 0; color: var(--muted); font-size: 12px; text-align: right; white-space: nowrap; }
 .watch-col.c-name { text-align: left; }

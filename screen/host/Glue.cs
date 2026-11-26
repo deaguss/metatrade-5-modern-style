@@ -55,7 +55,7 @@ static class Native
 
     public const int GWL_STYLE = -16, GWL_EXSTYLE = -20, GWLP_HWNDPARENT = -8;
     public const long WS_EX_APPWINDOW = 0x40000, WS_EX_TOOLWINDOW = 0x80;
-    public const uint SWP_NOZORDER = 0x4, SWP_NOACTIVATE = 0x10, SWP_FRAMECHANGED = 0x20;
+    public const uint SWP_NOSIZE = 0x1, SWP_NOZORDER = 0x4, SWP_NOACTIVATE = 0x10, SWP_FRAMECHANGED = 0x20;
     public const int SW_HIDE = 0, SW_SHOWNORMAL = 1, SW_SHOWNOACTIVATE = 4;
     public const uint WM_CLOSE = 0x10, WM_GETICON = 0x7F, WM_SETICON = 0x80, SMTO_ABORTIFHUNG = 0x2;
     public const int SM_CXICON = 11, SM_CXSMICON = 49;
@@ -106,6 +106,7 @@ sealed class Screen
     public DateTime FixedAt;      // when it was last put back after moving by itself
     public DateTime IconAt;       // when its icon was last checked
     public int InL, InT, InR, InB;
+    public int RgnL, RgnT, RgnW, RgnH;   // the window region last set (window-relative)
     public bool Placed;
     public IntPtr Hook;
 }
@@ -326,6 +327,7 @@ sealed class Glue
         Native.ShowWindow(sc.Win, Native.SW_HIDE);
         Native.SetWindowLongPtr(sc.Win, Native.GWL_EXSTYLE, new IntPtr(ex));
         Native.SetWindowRgn(sc.Win, IntPtr.Zero, true);
+        sc.RgnW = 0;   // no region now: set again when glued
         Native.RECT r;
         if (Native.GetWindowRect(sc.Mdi, out r) && r.W > 200 && r.H > 150)
             Native.SetWindowPos(sc.Win, IntPtr.Zero, r.L, r.T, r.W, r.H, Native.SWP_NOZORDER | Native.SWP_FRAMECHANGED);
@@ -452,8 +454,19 @@ sealed class Glue
             sc.InB = w.B - c.B;
         }
         Native.RECT outer = Placement.Outer(target, sc.InL, sc.InT, sc.InR, sc.InB);
-        Native.SetWindowPos(sc.Win, IntPtr.Zero, outer.L, outer.T, outer.W, outer.H, Native.SWP_NOZORDER | Native.SWP_NOACTIVATE);
-        Native.SetWindowRgn(sc.Win, Native.CreateRectRgn(sc.InL, sc.InT, sc.InL + target.W, sc.InT + target.H), true);
+        // MT5 only moved (dragged, say): the window moves along as it is, its region kept, so the
+        // page is neither cut nor drawn again on every step (no flicker).
+        bool sameSize = sc.Placed && !force && outer.W == sc.Outer.W && outer.H == sc.Outer.H;
+        Native.SetWindowPos(sc.Win, IntPtr.Zero, outer.L, outer.T, outer.W, outer.H,
+            Native.SWP_NOZORDER | Native.SWP_NOACTIVATE | (sameSize ? Native.SWP_NOSIZE : 0));
+        if (!sameSize || sc.RgnL != sc.InL || sc.RgnT != sc.InT || sc.RgnW != target.W || sc.RgnH != target.H)
+        {
+            Native.SetWindowRgn(sc.Win, Native.CreateRectRgn(sc.InL, sc.InT, sc.InL + target.W, sc.InT + target.H), true);
+            sc.RgnL = sc.InL;
+            sc.RgnT = sc.InT;
+            sc.RgnW = target.W;
+            sc.RgnH = target.H;
+        }
         sc.Last = target;
         Native.GetWindowRect(sc.Win, out sc.Outer);   // as Windows put it (rounded)
         sc.Placed = true;

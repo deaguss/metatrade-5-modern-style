@@ -762,7 +762,10 @@ function positionTool(side) {
       const money = (v) => formatMoney(v, 2);
       const targetBg = withAlpha(s.targetColor, 1);
       const stopBg = withAlpha(s.stopColor, 1);
-      if (!s.compact) {
+      // The stats show while the mouse is on the drawing or it is selected (or always, by its setting),
+      // so a chart with several positions drawn stays readable.
+      const showStats = s.alwaysShowStats || state.selected || state.hover;
+      if (!s.compact && showStats) {
         const tParts = [];
         if (inf.targetPrice) tParts.push(c.fmt(st.targetDist));
         if (inf.targetPct) tParts.push('(' + st.targetPct.toFixed(2) + '%)');
@@ -779,7 +782,7 @@ function positionTool(side) {
         if (tText) labelBox(g, xm, yt + (yt < ye ? -13 : 13) * (fs / 12), tText, targetBg, s.textColor, fs);
         if (sText) labelBox(g, xm, ys + (ys > ye ? 13 : -13) * (fs / 12), sText, stopBg, s.textColor, fs);
       }
-      if (s.alwaysShowStats || state.selected || state.hover || s.compact) {
+      if (showStats) {
         const rows = [];
         const first = [];
         if (inf.openPL && st.openPL !== null && !s.compact) first.push('Open P&L: ' + money(st.openPL));

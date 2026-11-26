@@ -23,6 +23,7 @@ export class Watchlist {
     this.rows = new Map();     // symbol -> {el, last, chg, pct, prevBid}
     root.innerHTML = '';
     root.tabIndex = 0;
+    new ResizeObserver(() => this.fit()).observe(root);
     const grip = el('div', 'watch-resize');
     grip.title = 'Drag to make the panel wider or narrower';
     root.appendChild(grip);
@@ -345,6 +346,15 @@ export class Watchlist {
   setWidth(px) {
     const w = clamp(Math.round(px), 200, Math.max(220, Math.min(640, window.innerWidth * 0.5)));
     this.root.style.width = w + 'px';
-    this.root.classList.toggle('narrow', w < 270);
+    this.fit();
+  }
+
+  // Fewer columns as the panel gets narrower (dragged, or held to 45% of a small window), so none is
+  // ever cut off: Chg goes first, then Chg%.
+  fit() {
+    const w = this.root.getBoundingClientRect().width;
+    if (!w) return;
+    this.root.classList.toggle('narrow', w < 320);
+    this.root.classList.toggle('tiny', w < 244);
   }
 }

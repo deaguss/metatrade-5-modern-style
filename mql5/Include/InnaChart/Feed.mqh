@@ -561,23 +561,37 @@ private:
          if(now - m_quotes[i].sentAt < IC_QUOTE_MS)
             continue;
          MqlTick t;
-         if(!SymbolInfoTick(m_quotes[i].sym, t))
-            continue;
-         if(now - m_quotes[i].prevAt > 60000)
+         ZeroMemory(t);
+         SymbolInfoTick(m_quotes[i].sym, t);
+         double bid = t.bid, ask = t.ask;
+         // A symbol just added to Market Watch may have no tick yet (a quiet market): its last
+         // bar's close stands in, so the watchlist shows a price, not "-".
+         if(bid <= 0.0 || ask <= 0.0)
+           {
+            double c[];
+            if(CopyClose(m_quotes[i].sym, PERIOD_M1, 0, 1, c) != 1 || c[0] <= 0.0)
+               continue;
+            bid = c[0];
+            ask = c[0];
+           }
+         // Yesterday's close (for the change): again in a minute, or in 2 seconds while MT5
+         // has not loaded the daily bars yet.
+         double prevBefore = m_quotes[i].prevClose;
+         if(now - m_quotes[i].prevAt > (ulong)(m_quotes[i].prevClose > 0.0 ? 60000 : 2000))
            {
             double c[];
             if(CopyClose(m_quotes[i].sym, PERIOD_D1, 1, 1, c) == 1)
                m_quotes[i].prevClose = c[0];
             m_quotes[i].prevAt = now;
            }
-         if(t.bid == m_quotes[i].bid && t.ask == m_quotes[i].ask)
+         if(bid == m_quotes[i].bid && ask == m_quotes[i].ask && m_quotes[i].prevClose == prevBefore)
             continue;
-         m_quotes[i].bid = t.bid;
-         m_quotes[i].ask = t.ask;
+         m_quotes[i].bid = bid;
+         m_quotes[i].ask = ask;
          m_quotes[i].sentAt = now;
          int d = m_quotes[i].digits;
-         m_pipe.Send("{\"t\":\"quote\",\"sym\":" + IcJsonQuote(m_quotes[i].sym) + ",\"bid\":" + DoubleToString(t.bid, d) +
-                     ",\"ask\":" + DoubleToString(t.ask, d) + ",\"time\":" + IntegerToString((long)t.time_msc) +
+         m_pipe.Send("{\"t\":\"quote\",\"sym\":" + IcJsonQuote(m_quotes[i].sym) + ",\"bid\":" + DoubleToString(bid, d) +
+                     ",\"ask\":" + DoubleToString(ask, d) + ",\"time\":" + IntegerToString((long)t.time_msc) +
                      ",\"prev\":" + DoubleToString(m_quotes[i].prevClose, d) + "}");
         }
      }
