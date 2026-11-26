@@ -8,6 +8,10 @@ All notable changes to MetaTrader 5 Modern Style are recorded here. The format f
 
 ### Added
 
+- **Several charts at once.** The layout button splits InnaChart into two charts (side by side or
+  one over the other), three or four, each with its own symbol and timeframe. Click a chart to work
+  on it: the top bar, the watchlist, the ticket and the drawing tools follow it. Charts of one
+  symbol share their drawings, every chart shows its symbol's trades, and the layout is remembered.
 - **Trading from InnaChart.** An order ticket on the screen (BUY and SELL with the prices, risk
   presets or your own risk in %, money or lots, stop loss in pips or price, take profit in R, pips or
   price, market or pending, Last, the risk % of the equity or the balance) shows MetaTrader 5's
@@ -43,6 +47,8 @@ All notable changes to MetaTrader 5 Modern Style are recorded here. The format f
   stop), the ticket says so and Confirm waits 2 seconds.
 - InnaChart is glued on properly again when its window was once maximized (Edge opened it
   maximized, so the page showed cut, with its title bar and a grey area around it).
+- A second InnaChart started for tests (`--no-glue`) no longer closes the screen of the one already
+  running, and the tray menu opens a closed screen again at the first click.
 - InnaChart no longer closes its screen while MetaTrader 5 shows a login window or another window in
   front of its charts.
 - InnaChart's icons are sharp at any display scale: the logo is drawn at the exact size of the tray,

@@ -30,6 +30,14 @@ export const FAVORITES = ['M1', 'M5', 'M15', 'M30', 'H1', 'H4', 'D1', 'W1', 'MN1
 const BY_ID = new Map(TIMEFRAMES.map((t) => [t.id, t]));
 
 export const isTimeframe = (id) => BY_ID.has(id);
+
+// A chart added to a split screen: the next step up from the longest timeframe the symbol already
+// shows (M15, then H1, H4, D1, W1, MN1), MN1 at the top.
+const LADDER = ['M1', 'M5', 'M15', 'H1', 'H4', 'D1', 'W1', 'MN1'];
+export function nextTimeframe(shown) {
+  const top = Math.max(...shown.map((tf) => tfSeconds(tf)));
+  return LADDER.find((tf) => tfSeconds(tf) > top) || 'MN1';
+}
 export const tfSeconds = (id) => (BY_ID.get(id) || BY_ID.get('M15')).sec;
 export const tfLabel = (id) => (BY_ID.get(id) || { label: id }).label;
 export const isIntraday = (id) => tfSeconds(id) < 86400;

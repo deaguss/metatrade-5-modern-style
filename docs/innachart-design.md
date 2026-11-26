@@ -53,7 +53,7 @@ the drawing tools and the trader's own drawing templates, without limits, on the
 
 ## Non-goals (for now)
 
-- Indicators, alerts, several charts at once (later phases).
+- Indicators and alerts (later phases).
 - MetaTrader 5 on another computer (a VPS). The screen serves the MetaTrader 5 on the same PC.
 
 ## Anti-goals
@@ -149,4 +149,6 @@ Times are the broker's server time in seconds, as MetaTrader 5 shows them.
    templates. Done in 1.2.0.
 2. Orders from the screen through the ticket's preview and Confirm; the trader's open trades on the
    chart. Done in 1.3.0.
-3. Indicators, alerts, several charts.
+3. Several charts at once: the screen split into 2, 3 or 4, each with its own symbol and
+   timeframe, the drawings of one symbol shared between its charts.
+4. Indicators, alerts.

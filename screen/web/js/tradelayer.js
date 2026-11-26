@@ -8,8 +8,12 @@ const COL = { tp: '#089981', sl: '#f23645', entry: '#787b86', buy: '#2962ff', se
 const FONT = '12px "Trebuchet MS", Arial, sans-serif';
 
 export class TradeLayer {
-  constructor(ticket) {
+  // where: the chart pane it draws on, {symbol(), offset()}: its symbol's trades show there, the
+  // ticket's preview only where the symbol is the ticket's, and offset() is where the pane is in
+  // the area the ticket floats over. Without it: the ticket's symbol, at no offset.
+  constructor(ticket, where) {
     this.t = ticket;
+    this.where = where || { symbol: () => ticket.symbol, offset: () => ({ x: 0, y: 0 }) };
     this.hits = [];     // chips' buttons from the last frame: {x, y, w, h, fn}
     this.lines = [];    // draggable lines from the last frame: {y, kind, which, trade}
     this.drag = null;
@@ -51,7 +55,9 @@ export class TradeLayer {
   // Draws a row of chips ending at xr, unless the ticket covers that spot: then left of the ticket,
   // or right of it when there is no room on its left. Returns each chip's rectangle.
   row(c, xr, y, parts) {
-    const r = this.t.rect ? this.t.rect() : null;
+    const t = this.t.rect ? this.t.rect() : null;
+    const off = this.where.offset();
+    const r = t ? { x: t.x - off.x, y: t.y - off.y, w: t.w, h: t.h } : null;
     const w = this.width(c.g, parts);
     let x = xr;
     if (r && xr > r.x - 4 && xr - w < r.x + r.w + 4 && y >= r.y - 12 && y <= r.y + r.h + 12) {
@@ -85,7 +91,8 @@ export class TradeLayer {
     // the open trades of this symbol
     const pc = this.t.pendingChange();
     const X = Math.round(c.w * 0.62);
-    for (const tr of tradesOf(this.t.trades, this.t.symbol)) {
+    const symbol = this.where.symbol();
+    for (const tr of tradesOf(this.t.trades, symbol)) {
       const lvl = (which) => (pc && pc.ticket === tr.ticket && pc.which === which ? pc.price : which === 'open' ? tr.open : tr[which]);
       const moved = (which) => pc && pc.ticket === tr.ticket && pc.which === which;
       const ye = this.level(c, lvl('open'), tr.position ? COL.entry : COL.buy, true);
@@ -114,7 +121,7 @@ export class TradeLayer {
       this.hits.push({ ...x, fn: () => (tr.position ? this.t.openClose(tr) : this.t.cancelOrder(tr)) });
     }
     // the order being previewed
-    const pv = this.t.previewLines();
+    const pv = symbol === this.t.symbol ? this.t.previewLines() : null;
     if (pv) {
       const plan = pv.plan;
       const X = c.w - 10;

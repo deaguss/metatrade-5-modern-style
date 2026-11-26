@@ -132,7 +132,9 @@ sealed class Glue
 
     public void Start()
     {
-        CloseLeftovers();
+        // Only a program that opens screens closes leftovers: a test copy started with --no-glue
+        // must never touch the screens of the InnaChart already running.
+        if (Enabled) CloseLeftovers();
         timer.Start();
     }
 
@@ -248,6 +250,7 @@ sealed class Glue
         {
             Log.Write("The screen of MT5 " + sc.Pid + " was closed; the tray menu opens it again.");
             sc.Win = IntPtr.Zero;
+            sc.Browser = null;   // the tray menu opens a new one at once, not after waiting for this one
             sc.Lost = true;
             return;
         }
@@ -475,6 +478,7 @@ sealed class Glue
             {
                 sc.Lost = false;
                 sc.Placed = false;
+                if (sc.Win == IntPtr.Zero || !Native.IsWindow(sc.Win)) sc.Browser = null;   // open one now
             }
             Keep(sc);
             if (!hidden && sc.Win != IntPtr.Zero)

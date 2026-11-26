@@ -56,17 +56,28 @@ export class Chart {
     } catch (e) {
       ro.observe(el);
     }
+    this.ro = ro;
+    this.alive = true;
     this.resize();
     this.bindMouse();
     const loop = () => {
+      if (!this.alive) return;
       if (this.dirty) this.render();
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
     // The countdown and the tick age change every second even without ticks.
-    setInterval(() => {
+    this.ticker = setInterval(() => {
       if (this.style.priceLine.countdown) this.dirty = true;
     }, 1000);
+  }
+
+  // A chart taken off the screen (a split view made smaller): it stops drawing and lets go of its canvas.
+  destroy() {
+    this.alive = false;
+    clearInterval(this.ticker);
+    this.ro.disconnect();
+    this.canvas.remove();
   }
 
   invalidate() {

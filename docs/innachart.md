@@ -46,6 +46,21 @@ From then on, opening MetaTrader 5 is enough: the service starts with it, and th
 | Watchlist | The list icon at the top right. It starts with MetaTrader 5's Market Watch and is then your own: **+** adds a symbol, the **x** on a row (or Delete, or a right-click) removes it, drag a row to move it, the **...** menu adds sections. Click a column's title to sort by it. Click a row, or use the arrow keys, to open its chart. Drag the panel's left edge to make it wider or narrower |
 | Hide the screen (MetaTrader 5's charts show) | The **MT5** button at the top right; `Ctrl+Alt+M` or the tray icon shows it again |
 | A window of its own (to move it to another monitor, or maximise it) | The window button next to **MT5**, or the tray menu's **Separate window**. The same button glues it onto MetaTrader 5 again. The choice is remembered |
+| Several charts at once | The layout button next to the chart type: one chart, two side by side, two one over the other, three (a big one and two beside it) or four (two by two). See [Several charts](#several-charts) |
+
+### Several charts
+
+Split the screen with the layout button next to the chart type at the top. Each chart has its own
+symbol and timeframe; a chart added to the split shows the symbol of the one you work on, on the
+next timeframe up (M15, then H1, H4, D1...), so a top-down look takes one click.
+
+- Click a chart to work on it: it gets a blue edge, and the symbol and timeframe buttons, the
+  watchlist, the order ticket and the drawing tools work on it.
+- Two charts of one symbol show the same drawings: a line drawn on the H1 shows on the D1 too.
+- Every chart shows the open trades of its symbol; the ticket's preview shows on the charts of the
+  ticket's symbol.
+- A smaller split keeps the other charts' symbols and timeframes: they come back when you split it
+  again. The layout is remembered.
 
 ### Drawing
 

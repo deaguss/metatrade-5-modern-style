@@ -121,7 +121,19 @@ body.tools-float { grid-template-columns: 0 minmax(0, 1fr) auto; }
 
 /* ---- chart ---- */
 #chart-wrap { grid-area: chart; position: relative; min-width: 0; min-height: 0; overflow: hidden; }
-#chart { position: absolute; inset: 0; }
+/* one chart, or the screen split into 2, 3 or 4; the active one has a blue edge */
+.panes { position: absolute; inset: 0; display: grid; gap: 1px; background: var(--line); }
+.panes.g1 { grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
+.panes.g2v { grid-template: minmax(0, 1fr) / repeat(2, minmax(0, 1fr)); }
+.panes.g2h { grid-template: repeat(2, minmax(0, 1fr)) / minmax(0, 1fr); }
+.panes.g3 { grid-template: "a b" minmax(0, 1fr) "a c" minmax(0, 1fr) / minmax(0, 1fr) minmax(0, 1fr); }
+.panes.g3 .pane:nth-child(1) { grid-area: a; }
+.panes.g3 .pane:nth-child(2) { grid-area: b; }
+.panes.g3 .pane:nth-child(3) { grid-area: c; }
+.panes.g4 { grid-template: repeat(2, minmax(0, 1fr)) / repeat(2, minmax(0, 1fr)); }
+.pane { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--bg); }
+.pane-chart { position: absolute; inset: 0; }
+.panes:not(.g1) .pane.active::after { content: ""; position: absolute; inset: 0; border: 1px solid var(--accent); pointer-events: none; z-index: 3; }
 .chart-canvas { display: block; touch-action: none; }
 .legend { position: absolute; left: 10px; top: 6px; pointer-events: none; display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; font-size: 13px; text-shadow: 0 0 4px var(--bg); }
 .legend .title { font-weight: 700; }

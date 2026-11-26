@@ -1,7 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { niceStep, parseColor, toCss, withAlpha, textOn, drawingsFile, pipSize, merge, formatPrice } from '../web/js/util.js';
-import { parseInterval, barEnd, crosshairTime, countdown, labelStep, timeLabels, tfSeconds } from '../web/js/timeframes.js';
+import { parseInterval, barEnd, crosshairTime, countdown, labelStep, timeLabels, tfSeconds, nextTimeframe } from '../web/js/timeframes.js';
+
+test('a chart added to a split screen: the next timeframe up', () => {
+  assert.equal(nextTimeframe(['M15']), 'H1');
+  assert.equal(nextTimeframe(['H1', 'H4']), 'D1', 'above the highest one shown');
+  assert.equal(nextTimeframe(['H1', 'H4', 'D1']), 'W1');
+  assert.equal(nextTimeframe(['MN1']), 'MN1', 'the top stays the top');
+  assert.equal(nextTimeframe(['M30']), 'H1', 'a timeframe between the steps: the next step');
+  assert.equal(nextTimeframe(['H2', 'M5']), 'H4', 'above the longest');
+});
 import { Series } from '../web/js/series.js';
 import { View, priceTicks, stepDigits } from '../web/js/scale.js';
 import { positionStats, levelsFor } from '../web/js/position.js';

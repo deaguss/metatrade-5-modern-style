@@ -44,6 +44,11 @@ const I = {
   glue: '<rect x="3" y="3" width="18" height="18" rx="2"/><rect x="7" y="9" width="10" height="8" rx="1" fill="currentColor" fill-opacity=".3"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   minus: '<path d="M5 12h14"/>',
+  g1: '<rect x="3" y="4" width="18" height="16" rx="2"/>',
+  g2v: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/>',
+  g2h: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 12h18"/>',
+  g3: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16M12 12h9"/>',
+  g4: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16M3 12h18"/>',
   check: '<path d="M5 12l5 5 9-10"/>',
   stay: '<path d="M12 3l2.5 6H21l-5 4 2 7-6-4-6 4 2-7-5-4h6.5z"/>',
 };

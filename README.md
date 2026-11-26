@@ -19,9 +19,9 @@ right on your chart.
   and blue candles, no grid, and a price scale you can drag. It saves the look as a template, so any
   chart can use it.
 - <img src="docs/images/innachart-logo.svg" alt="" height="20"> **InnaChart**. A roomy, modern chart that sits right on MetaTrader 5's chart area and opens
-  with it, with MetaTrader 5's own candles: drawing tools with a floating toolbar, long and short
-  positions that work out your lots, your own drawing and chart templates, and a network indicator
-  in milliseconds. Trade from it too: its order ticket goes through the ActionInna EA, with the same
+  with it, with MetaTrader 5's own candles, one chart or up to four: drawing tools with a floating
+  toolbar, long and short positions that work out your lots, your own drawing and chart templates,
+  and a network indicator in milliseconds. Trade from it too: its order ticket goes through the ActionInna EA, with the same
   preview and Confirm. See [docs/innachart.md](docs/innachart.md).
 - **A tidy window layout**. A short guide to a clean MetaTrader 5 window, and to the drawing tools
   MetaTrader 5 already has, free and without limits: [docs/layout.md](docs/layout.md).

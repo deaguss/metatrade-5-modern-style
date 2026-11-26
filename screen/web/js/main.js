@@ -6,7 +6,7 @@ import { Feed } from './feed.js';
 import { Store } from './store.js';
 import { TOOLS, GROUPS } from './tools.js';
 import { CHART_FIELDS, CHART_TYPES, getPath, setPath } from './style.js';
-import { TIMEFRAMES, FAVORITES, tfLabel, isTimeframe, parseInterval } from './timeframes.js';
+import { TIMEFRAMES, FAVORITES, tfLabel, isTimeframe, parseInterval, nextTimeframe } from './timeframes.js';
 import { emptyTemplates, readTemplates, mergeTemplates, toolStart, chartStart } from './templates.js';
 import { clamp, clone, debounce, drawingsFile, formatPrice, merge, withAlpha } from './util.js';
 import { icon } from './icons.js';
@@ -22,8 +22,6 @@ const KEY = hash.get('key') || '';
 document.title = 'InnaChart' + (TERM ? ' #' + TERM : '');
 
 const store = new Store(KEY);
-const chart = new Chart(document.getElementById('chart'));
-const D = chart.drawings;
 const feed = KEY ? new Feed('ws://' + location.host + '/ws?term=' + TERM, KEY) : null;
 
 const LAYOUT_DEFAULT = {
@@ -38,6 +36,9 @@ const LAYOUT_DEFAULT = {
   groupTool: {},
   toolsFloat: true,    // the drawing tools float over the chart (the prototype's bar), or dock at the left
   toolsPos: null,      // where the floating bar is, in the chart area's pixels
+  grid: '1',           // one chart, or the screen split: '2v', '2h', '3', '4'
+  panes: null,         // each chart's {symbol, tf}, kept for up to four (symbol and tf: the active one's)
+  active: 0,           // the active chart's place
 };
 
 const app = {
@@ -46,25 +47,190 @@ const app = {
   hello: null,
   symbols: [],         // Market Watch: {name, desc, digits}
   quotes: new Map(),   // symbol -> {bid, ask, prev}
-  loadToken: 0,
-  loadingMore: false,
   tickTime: 0,         // the last tick's server time, ms
   offsets: [],         // lower bounds of (server time - this PC's time), ms, with when seen
   perf: { render: NaN, delay: NaN },
 };
 
 const saveLayout = debounce(() => store.put('layout.json', app.layout).catch((e) => toast(e.message)), 400);
-const saveDrawings = debounce((symbol, items) => store.put(drawingsFile(symbol), { version: 1, symbol, items }).catch((e) => toast(e.message)), 300);
 const saveTemplates = () => store.put('templates.json', app.templates).catch((e) => toast(e.message));
+
+// Each symbol's drawings are saved on their own: two charts of two symbols, changed together, both saved.
+const drawingSavers = new Map();
+function saveDrawings(symbol, items) {
+  let save = drawingSavers.get(symbol);
+  if (!save) {
+    save = debounce((list) => store.put(drawingsFile(symbol), { version: 1, symbol, items: list }).catch((e) => toast(e.message)), 300);
+    drawingSavers.set(symbol, save);
+  }
+  save(items);
+}
+saveDrawings.flush = (symbol, items) => {
+  const save = drawingSavers.get(symbol);
+  if (save) save.flush(items);
+};
+
+// ---- the charts: one, or the screen split into 2, 3 or 4 ---------------------------------------
+
+// The layouts and how many charts each holds. 2v: side by side; 2h: one over the other; 3: a big one
+// on the left and two on the right; 4: two by two.
+const GRIDS = [
+  { id: '1', n: 1, label: 'One chart' },
+  { id: '2v', n: 2, label: 'Two, side by side' },
+  { id: '2h', n: 2, label: 'Two, one over the other' },
+  { id: '3', n: 3, label: 'Three: a big one and two beside it' },
+  { id: '4', n: 4, label: 'Four, two by two' },
+];
+const gridOf = (id) => GRIDS.find((g) => g.id === id) || GRIDS[0];
+
+const panesEl = document.getElementById('panes');
+const panes = [];
+let active = null;          // the chart the top bar, the watchlist, the ticket and the drawing tools work on
+let chart = null;           // the active chart
+let D = null;               // and its drawings
+let tradeLayers = false;    // once the ticket is made, every chart shows its own symbol's trades
+let ready = false;          // the page is built: making a chart active updates the rest
+
+function makePane() {
+  const p = { el: el('div', 'pane'), box: el('div', 'pane-chart'), legend: el('div', 'legend'), corner: el('div', 'corner'),
+    symbol: '', tf: app.layout.tf, token: 0, hover: null, loadingMore: false };
+  p.el.append(p.box, p.legend, p.corner);
+  panesEl.appendChild(p.el);
+  p.chart = new Chart(p.box);
+  p.D = p.chart.drawings;
+  p.autoBtn = tbButton('A', 'Auto scale (double-click the price scale)', () => {
+    p.chart.view.auto = !p.chart.view.auto;
+    p.chart.invalidate();
+    paintCorner(p);
+  });
+  p.latestBtn = tbButton(icon('latest', 16), 'Go to the newest bar', () => {
+    p.chart.resetTime();
+    paintCorner(p);
+  });
+  p.corner.append(p.latestBtn, p.autoBtn);
+  // A press anywhere on a chart makes it the active one first, so a drawing tool draws there.
+  p.el.addEventListener('pointerdown', () => activate(p), true);
+  wirePane(p);
+  panes.push(p);
+  if (tradeLayers) addTradeLayer(p);
+  return p;
+}
+
+// The chart the top bar, the watchlist, the ticket and the drawing tools work on. A drawing tool
+// picked on the last one goes along.
+function activate(p) {
+  if (p === active) return;
+  const old = active;
+  active = p;
+  chart = p.chart;
+  D = p.D;
+  for (const q of panes) q.el.classList.toggle('active', q === p);
+  if (old && panes.includes(old)) {
+    const tool = old.D.tool;
+    const armed = old.D.armed;
+    if (old.D.pending || old.D.drag) old.D.cancel();
+    old.D.select(null);
+    if (tool) {
+      old.D.setTool(null);
+      D.setTool(tool, armed);
+    }
+    old.chart.invalidate();
+  }
+  app.layout.active = panes.indexOf(p);
+  if (p.symbol) {
+    app.layout.symbol = p.symbol;
+    app.layout.tf = p.tf;
+  }
+  if (ready) showActive();
+}
+
+function showActive() {
+  document.title = 'InnaChart' + (app.layout.symbol ? ' - ' + app.layout.symbol + ', ' + tfLabel(app.layout.tf) : '') + (TERM ? ' #' + TERM : '');
+  saveLayout();
+  renderTop();
+  watch.setCurrent(app.layout.symbol);
+  if (ticket && app.layout.symbol) ticket.setSymbol(app.layout.symbol, symbolDesc(app.layout.symbol));
+  renderFtb();
+  paintTools();
+}
+
+// One chart, or the screen split into 2, 3 or 4. Charts added come back as they were last time
+// (their symbol and timeframe), else the active symbol on the next timeframe up.
+function setGrid(id) {
+  const g = gridOf(id);
+  app.layout.grid = g.id;
+  panesEl.className = 'panes g' + g.id;
+  while (panes.length > g.n) dropPane(panes[panes.length - 1]);
+  while (panes.length < g.n) {
+    const kept = app.layout.panes && app.layout.panes[panes.length];
+    const spec = kept && kept.symbol && isTimeframe(kept.tf) ? kept : nextPane();
+    const p = makePane();
+    p.symbol = spec.symbol || '';
+    p.tf = isTimeframe(spec.tf) ? spec.tf : app.layout.tf;
+    if (ready && p.symbol && feed && feed.feedOn) loadChart(p.symbol, p.tf, p);
+  }
+  gridBtn.innerHTML = icon('g' + g.id, 20);
+  rememberPanes();
+  if (ready) {
+    saveLayout();
+    watchAll();
+    subscribeQuotes();
+  }
+}
+
+// A chart added to a split shows the active symbol on the next timeframe up.
+function nextPane() {
+  const base = active || panes[0];
+  return { symbol: base.symbol, tf: nextTimeframe([base.tf].concat(panes.filter((q) => q.symbol === base.symbol).map((q) => q.tf))) };
+}
+
+function dropPane(p) {
+  if (p.D.owner) saveDrawings.flush(p.D.owner, p.D.items);
+  p.chart.destroy();
+  p.el.remove();
+  panes.splice(panes.indexOf(p), 1);
+  if (active === p) activate(panes[0]);
+}
+
+// Each chart's symbol and timeframe, kept for up to four (a smaller split keeps the others' for later).
+function rememberPanes() {
+  const kept = Array.isArray(app.layout.panes) ? app.layout.panes.slice(0, 4) : [];
+  panes.forEach((q, i) => {
+    kept[i] = { symbol: q.symbol, tf: q.tf };
+  });
+  app.layout.panes = kept;
+  app.layout.active = Math.max(0, panes.indexOf(active));
+}
+
+function watchAll() {
+  if (feed) feed.watch(panes.filter((q) => q.symbol).map((q) => [q.symbol, q.tf]));
+}
+
+// Two charts of one symbol show the same drawings: a change on one shows on the other.
+function shareDrawings(p) {
+  for (const q of panes) {
+    if (q === p || q.D.owner !== p.D.owner) continue;
+    q.D.load(clone(p.D.items));
+    q.chart.invalidate();
+  }
+}
+
+function addTradeLayer(p) {
+  p.chart.layers.push(new TradeLayer(ticket, { symbol: () => p.symbol, offset: () => ({ x: p.el.offsetLeft, y: p.el.offsetTop }) }));
+}
+
+function invalidateAll() {
+  for (const q of panes) q.chart.invalidate();
+}
+
+activate(makePane());
 
 // ---- the top bar ------------------------------------------------------------------------------
 
 const top = document.getElementById('top');
 const left = document.getElementById('left');
 const right = document.getElementById('right');
-const legend = document.getElementById('legend');
 const notice = document.getElementById('notice');
-const corner = document.getElementById('corner');
 
 function tbButton(html, title, onClick, cls = '') {
   const b = el('button', 'tb ' + cls, html);
@@ -86,6 +252,9 @@ const tfMore = tbButton(icon('chevron', 16), 'All timeframes', (e) => {
 }, 'icon');
 const typeBtn = tbButton(icon('candles'), 'Chart type', (e) => {
   menuBelow(CHART_TYPES.map(([id, label]) => ({ label, check: chart.style.chartType === id, action: () => changeStyle('chartType', id) })), e.currentTarget);
+}, 'icon');
+const gridBtn = tbButton(icon('g1', 20), 'Split the screen: 1, 2, 3 or 4 charts (each its own symbol and timeframe)', (e) => {
+  menuBelow([{ title: 'Charts on the screen' }].concat(GRIDS.map((g) => ({ label: g.label, icon: 'g' + g.id, check: app.layout.grid === g.id, action: () => setGrid(g.id) }))), e.currentTarget);
 }, 'icon');
 const undoBtn = tbButton(icon('undo'), 'Undo (Ctrl+Z)', () => D.undo() && chart.invalidate(), 'icon');
 const redoBtn = tbButton(icon('redo'), 'Redo (Ctrl+Y)', () => D.redo() && chart.invalidate(), 'icon');
@@ -117,7 +286,7 @@ const logo = el('img', 'logo');
 logo.src = 'img/logo.svg';
 logo.alt = 'InnaChart';
 logo.title = 'InnaChart';
-top.append(logo, symbolBtn, sep(), tfBox, tfMore, sep(), typeBtn, sep(), undoBtn, redoBtn, grow(), netBtn, sep(), tradeBtn, watchBtn, settingsBtn, windowBtn, hideBtn);
+top.append(logo, symbolBtn, sep(), tfBox, tfMore, sep(), typeBtn, gridBtn, sep(), undoBtn, redoBtn, grow(), netBtn, sep(), tradeBtn, watchBtn, settingsBtn, windowBtn, hideBtn);
 
 function paintWindowBtn() {
   const separate = !!(feed && feed.separate);
@@ -215,10 +384,14 @@ for (const g of GROUPS) {
   left.appendChild(b);
 }
 left.appendChild(el('div', 'sep'));
-const magnetBtn = toggleTool('magnet', 'Magnet: points snap to open, high, low or close', () => (D.magnet = app.layout.magnet = !app.layout.magnet));
-const stayBtn = toggleTool('stay', 'Keep drawing with the same tool', () => (D.stay = app.layout.stay = !app.layout.stay));
-const lockBtn = toggleTool('lock', 'Lock every drawing', () => (D.locked = !D.locked));
-const hideAllBtn = toggleTool('eyeOff', 'Hide every drawing', () => (D.hidden = !D.hidden));
+const everyChart = (key, v) => {
+  for (const q of panes) q.D[key] = v;
+  return v;
+};
+const magnetBtn = toggleTool('magnet', 'Magnet: points snap to open, high, low or close', () => everyChart('magnet', (app.layout.magnet = !app.layout.magnet)));
+const stayBtn = toggleTool('stay', 'Keep drawing with the same tool', () => everyChart('stay', (app.layout.stay = !app.layout.stay)));
+const lockBtn = toggleTool('lock', 'Lock every drawing', () => everyChart('locked', !D.locked));
+const hideAllBtn = toggleTool('eyeOff', 'Hide every drawing', () => everyChart('hidden', !D.hidden));
 const removeBtn = el('button', 'tool', icon('trash'));
 removeBtn.title = 'Remove every drawing on this symbol';
 removeBtn.addEventListener('click', async () => {
@@ -286,7 +459,7 @@ function toggleTool(name, title, flip) {
   b.addEventListener('click', () => {
     b.classList.toggle('on', !!flip());
     saveLayout();
-    chart.invalidate();
+    invalidateAll();
   });
   left.appendChild(b);
   return b;
@@ -593,10 +766,12 @@ function openChartSettings() {
   const work = clone(chart.style);
   const set = (path, v) => {
     setPath(work, path, v);
-    chart.style = work;
-    chart.layout();
-    chart.invalidate();
-    renderLegend();
+    for (const q of panes) {
+      q.chart.style = work;
+      q.chart.layout();
+      q.chart.invalidate();
+      renderLegend(q);
+    }
   };
   const tabs = CHART_FIELDS.map((t) => ({ name: t.tab, body: formTab(t.rows, (p) => getPath(work, p), set) }));
   const tplBtn = el('button', 'btn', 'Template ' + icon('chevron', 12));
@@ -638,11 +813,14 @@ function openChartSettings() {
 }
 
 function applyChartStyle(style) {
-  chart.style = merge(chartStart(emptyTemplates()), style);
-  app.layout.style = clone(chart.style);
-  chart.layout();
-  chart.invalidate();
-  renderLegend();
+  const st = merge(chartStart(emptyTemplates()), style);
+  app.layout.style = clone(st);
+  for (const q of panes) {
+    q.chart.style = st;
+    q.chart.layout();
+    q.chart.invalidate();
+    renderLegend(q);
+  }
   saveLayout();
 }
 
@@ -654,15 +832,13 @@ function changeStyle(path, v) {
 
 // ---- the legend, notices and the corner buttons ------------------------------------------------
 
-let hoverIndex = null;
-
-function renderLegend() {
-  const st = chart.style.legend;
-  const s = chart.series;
+function renderLegend(p = active) {
+  const st = p.chart.style.legend;
+  const s = p.chart.series;
   let html = '';
-  if (st.title && app.layout.symbol) html += '<span class="title">' + esc(app.layout.symbol) + ' &middot; ' + esc(tfLabel(app.layout.tf)) + (app.hello ? ' &middot; ' + esc(app.hello.company || '') : '') + '</span>';
+  if (st.title && p.symbol) html += '<span class="title">' + esc(p.symbol) + ' &middot; ' + esc(tfLabel(p.tf)) + (app.hello ? ' &middot; ' + esc(app.hello.company || '') : '') + '</span>';
   if (s && s.length && (st.ohlc || st.change || st.volume)) {
-    const i = hoverIndex !== null && hoverIndex >= 0 && hoverIndex < s.length ? hoverIndex : s.length - 1;
+    const i = p.hover !== null && p.hover >= 0 && p.hover < s.length ? p.hover : s.length - 1;
     const b = s.bars[i];
     const prev = i > 0 ? s.bars[i - 1].c : b.o;
     const up = b.c >= b.o;
@@ -677,7 +853,11 @@ function renderLegend() {
     if (st.volume) o += '<span>Vol <b>' + b.v + '</b></span>';
     html += '<span class="ohlc">' + o + '</span>';
   }
-  legend.innerHTML = html;
+  p.legend.innerHTML = html;
+}
+
+function renderLegends() {
+  for (const q of panes) renderLegend(q);
 }
 
 function showNotice(title, text) {
@@ -689,34 +869,28 @@ function showNotice(title, text) {
   notice.innerHTML = '<b>' + esc(title) + '</b>' + esc(text || '');
 }
 
-const autoBtn = tbButton('A', 'Auto scale (double-click the price scale)', () => {
-  chart.view.auto = !chart.view.auto;
-  chart.invalidate();
-  paintCorner();
-});
-const latestBtn = tbButton(icon('latest', 16), 'Go to the newest bar', () => {
-  chart.resetTime();
-  paintCorner();
-});
-corner.append(latestBtn, autoBtn);
-
-function paintCorner() {
-  autoBtn.classList.toggle('on', chart.view.auto);
-  latestBtn.hidden = chart.atEnd;
+function paintCorner(p = active) {
+  p.autoBtn.classList.toggle('on', p.chart.view.auto);
+  p.latestBtn.hidden = p.chart.atEnd;
 }
 
 // ---- the order ticket -------------------------------------------------------------------------
 
 const ticket = feed ? new Ticket(document.getElementById('chart-wrap'), {
   feed,
-  chart,
+  get chart() {
+    return chart;
+  },
   get layout() {
     return app.layout;
   },
   save: () => saveLayout(),
   onShow: (on) => tradeBtn.classList.toggle('on', on),
 }) : null;
-if (ticket) chart.layers.push(new TradeLayer(ticket));
+if (ticket) {
+  tradeLayers = true;
+  for (const q of panes) addTradeLayer(q);
+}
 
 // ---- the watchlist ----------------------------------------------------------------------------
 
@@ -743,13 +917,13 @@ const watch = new Watchlist(right, {
 function showWatchlist() {
   right.hidden = !app.layout.watchlist;
   watchBtn.classList.toggle('on', app.layout.watchlist);
-  chart.resize();
+  for (const q of panes) q.chart.resize();
 }
 
 function subscribeQuotes() {
   if (!feed) return;
   const list = watch.symbols();
-  if (app.layout.symbol && !list.includes(app.layout.symbol)) list.push(app.layout.symbol);
+  for (const q of panes) if (q.symbol && !list.includes(q.symbol)) list.push(q.symbol);
   feed.quotes(list);
 }
 
@@ -903,91 +1077,104 @@ function openNet() {
 
 // ---- loading a chart --------------------------------------------------------------------------
 
-async function loadChart(symbol, tf) {
-  if (!symbol || !isTimeframe(tf)) return;
-  if (D.pending || D.drag) D.cancel();
-  const token = ++app.loadToken;
-  const sameSymbol = symbol === app.layout.symbol;
-  if (!sameSymbol && D.owner) saveDrawings.flush(D.owner, D.items);
-  app.layout.symbol = symbol;
-  app.layout.tf = tf;
-  document.title = 'InnaChart - ' + symbol + ', ' + tfLabel(tf) + (TERM ? ' #' + TERM : '');
-  saveLayout();
-  renderTop();
-  watch.setCurrent(symbol);
-  chart.symbol = symbol;
-  chart.tf = tf;
-  if (ticket) ticket.setSymbol(symbol, symbolDesc(symbol));
-  chart.bid = NaN;
-  chart.ask = NaN;
-  const series = new Series(symbol, tf, (app.symbols.find((s) => s.name === symbol) || { digits: 2 }).digits);
-  chart.message = 'Loading ' + symbol + ' ' + tfLabel(tf) + '...';
-  chart.setSeries(series);
-  chart.message = 'Loading ' + symbol + ' ' + tfLabel(tf) + '...';
-  if (D.owner !== symbol) {
+async function loadChart(symbol, tf, p = active) {
+  if (!symbol || !isTimeframe(tf) || !panes.includes(p)) return;
+  if (p.D.pending || p.D.drag) p.D.cancel();
+  const token = ++p.token;
+  const c = p.chart;
+  if (symbol !== p.symbol && p.D.owner) saveDrawings.flush(p.D.owner, p.D.items);
+  p.symbol = symbol;
+  p.tf = tf;
+  rememberPanes();
+  if (p === active) {
+    app.layout.symbol = symbol;
+    app.layout.tf = tf;
+    showActive();
+  } else saveLayout();
+  c.symbol = symbol;
+  c.tf = tf;
+  c.bid = NaN;
+  c.ask = NaN;
+  const series = new Series(symbol, tf, (app.symbols.find((x) => x.name === symbol) || { digits: 2 }).digits);
+  c.message = 'Loading ' + symbol + ' ' + tfLabel(tf) + '...';
+  c.setSeries(series);
+  c.message = 'Loading ' + symbol + ' ' + tfLabel(tf) + '...';
+  if (p.D.owner !== symbol) {
     // Nothing of the last symbol's may be saved under this one, nor anything over this symbol's
-    // file before it was read.
-    D.load([]);
-    D.owner = null;
-    try {
-      const saved = await store.get(drawingsFile(symbol), null);
-      if (token !== app.loadToken) return;
-      D.load(saved && saved.items);
-      D.owner = symbol;
-    } catch (e) {
-      if (token !== app.loadToken) return;
-      toast('Could not read the drawings of ' + symbol + ': ' + e.message + '. New drawings are not saved until it can be read.', 6000);
+    // file before it was read. Another chart of the symbol has its drawings already.
+    p.D.load([]);
+    p.D.owner = null;
+    const twin = panes.find((q) => q !== p && q.D.owner === symbol);
+    if (twin) {
+      p.D.load(clone(twin.D.items));
+      p.D.owner = symbol;
+    } else {
+      try {
+        const saved = await store.get(drawingsFile(symbol), null);
+        if (token !== p.token) return;
+        p.D.load(saved && saved.items);
+        p.D.owner = symbol;
+      } catch (e) {
+        if (token !== p.token) return;
+        toast('Could not read the drawings of ' + symbol + ': ' + e.message + '. New drawings are not saved until it can be read.', 6000);
+      }
     }
   }
   if (!feed) return;
-  feed.watch([[symbol, tf]]);
+  watchAll();
   subscribeQuotes();
   try {
     const r = await feed.request({ t: 'history', sym: symbol, tf, before: 0, count: 3000 }, 30000);
-    if (token !== app.loadToken) return;
+    if (token !== p.token) return;
     series.digits = r.digits;
     series.setHistory(r.bars, r.done);
-    chart.setSeries(series);
-    hoverIndex = null;
-    renderLegend();
-    paintCorner();
+    c.setSeries(series);
+    p.hover = null;
+    renderLegend(p);
+    paintCorner(p);
   } catch (e) {
-    if (token !== app.loadToken) return;
-    chart.message = 'Could not load ' + symbol + ' ' + tfLabel(tf) + ':\n' + e.message;
-    chart.invalidate();
+    if (token !== p.token) return;
+    c.message = 'Could not load ' + symbol + ' ' + tfLabel(tf) + ':\n' + e.message;
+    c.invalidate();
   }
-  refreshSpec();
+  refreshSpec(p);
 }
 
-async function refreshSpec() {
-  if (!feed || !feed.feedOn || !app.layout.symbol) return;
+async function refreshSpec(p = active) {
+  if (!feed || !feed.feedOn || !p.symbol) return;
+  const symbol = p.symbol;
   try {
-    const spec = await feed.request({ t: 'spec', sym: app.layout.symbol });
-    if (spec.sym === app.layout.symbol) {
-      chart.spec = spec;
-      chart.invalidate();
+    const spec = await feed.request({ t: 'spec', sym: symbol });
+    if (spec.sym === p.symbol) {
+      p.chart.spec = spec;
+      p.chart.invalidate();
     }
   } catch (e) {
     // the position tools count in units until it arrives
   }
 }
-setInterval(refreshSpec, 30000);
+setInterval(() => panes.forEach((q) => refreshSpec(q)), 30000);
 
-async function loadMore() {
-  const s = chart.series;
-  if (!feed || app.loadingMore || !s || !s.length || s.done || (s.retryAt && Date.now() < s.retryAt)) return;
-  app.loadingMore = true;
-  const token = app.loadToken;
+async function loadMore(p) {
+  const s = p.chart.series;
+  if (!feed || p.loadingMore || !s || !s.length || s.done || (s.retryAt && Date.now() < s.retryAt)) return;
+  p.loadingMore = true;
+  const token = p.token;
   try {
     const r = await feed.request({ t: 'history', sym: s.symbol, tf: s.tf, before: s.bars[0].t, count: 2000 }, 30000);
-    if (token === app.loadToken && chart.series === s) {
+    if (token === p.token && p.chart.series === s) {
       const added = s.prepend(r.bars, r.done);
-      chart.prepended(added);
+      p.chart.prepended(added);
     }
   } catch (e) {
     s.retryAt = Date.now() + 5000;   // MT5 may still be downloading them: ask again in a while
   }
-  app.loadingMore = false;
+  p.loadingMore = false;
+}
+
+// Every chart that has a symbol, loaded again (MT5 linked again, or the page started).
+function loadAll() {
+  for (const q of panes) if (q.symbol) loadChart(q.symbol, q.tf, q);
 }
 
 function setTimeframe(tf) {
@@ -1000,7 +1187,8 @@ function noteServerTime(serverMs) {
   const now = Date.now();
   app.offsets.push({ v: serverMs - now, at: now });
   while (app.offsets.length && now - app.offsets[0].at > 60000) app.offsets.shift();
-  chart.serverOffset = Math.max(...app.offsets.map((o) => o.v));
+  const offset = Math.max(...app.offsets.map((o) => o.v));
+  for (const q of panes) q.chart.serverOffset = offset;
 }
 
 if (feed) {
@@ -1015,19 +1203,17 @@ if (feed) {
   feed.on('ticket.terminal', (m) => ticket && ticket.onTerminal(m));
   feed.on('ticket.trades', (m) => {
     if (ticket) ticket.onTrades(m);
-    chart.invalidate();
+    invalidateAll();
   });
   feed.on('feed', () => {
     paintNet();
     updateNotice();
   });
-  feed.on('resync', () => {
-    if (app.layout.symbol) loadChart(app.layout.symbol, app.layout.tf);
-  });
+  feed.on('resync', loadAll);
   feed.on('hello', (m) => {
     app.hello = m;
     noteServerTime(m.now * 1000);
-    renderLegend();
+    renderLegends();
   });
   feed.on('symbols', (m) => {
     app.symbols = m.list || [];
@@ -1036,20 +1222,25 @@ if (feed) {
     renderTop();
     if (ticket && app.layout.symbol) ticket.setSymbol(app.layout.symbol, symbolDesc(app.layout.symbol));
     subscribeQuotes();
-    if (!app.layout.symbol && app.symbols.length) {
+    if (app.symbols.length) {
+      // a chart without a symbol yet (the first start) shows gold, or the first symbol
       const gold = app.symbols.find((s) => /^xau/i.test(s.name));
-      loadChart((gold || app.symbols[0]).name, app.layout.tf);
+      for (const q of panes) if (!q.symbol) loadChart((gold || app.symbols[0]).name, q.tf, q);
     }
   });
   feed.on('bar', (m) => {
-    if (m.sym === app.layout.symbol && m.tf === app.layout.tf) {
-      chart.live(m.bar, m);
-      if (ticket) ticket.onTick(m.bid, m.ask);
-      if (hoverIndex === null) renderLegend();
-      if (m.time) {
-        app.tickTime = m.time;
-        noteServerTime(m.time);
-      }
+    let shown = false;
+    for (const q of panes) {
+      if (m.sym !== q.symbol || m.tf !== q.tf) continue;
+      q.chart.live(m.bar, m);
+      if (q.hover === null) renderLegend(q);
+      shown = true;
+    }
+    if (!shown) return;
+    if (ticket && m.sym === app.layout.symbol) ticket.onTick(m.bid, m.ask);
+    if (m.time) {
+      app.tickTime = m.time;
+      noteServerTime(m.time);
     }
   });
   feed.on('quote', (m) => {
@@ -1059,63 +1250,81 @@ if (feed) {
   });
   feed.on('clock', (m) => noteServerTime(m.now * 1000));
   feed.on('account', (m) => {
-    chart.equity = m.equity;
+    for (const q of panes) q.chart.equity = m.equity;
   });
   feed.on('stats', paintNet);
 }
 
-chart.onFrame = (took, sinceData) => {
-  const ema = (old, v) => (Number.isFinite(old) ? old * 0.8 + v * 0.2 : v);
-  app.perf.render = ema(app.perf.render, took);
-  if (sinceData > 0) app.perf.delay = ema(app.perf.delay, sinceData);
-};
-chart.onNeedHistory = loadMore;
-chart.onHover = (i) => {
-  hoverIndex = i;
-  renderLegend();
-};
-chart.onViewChange = paintCorner;
-chart.onOpenSettings = (it) => openDrawingSettings(it);
-chart.onContextMenu = (it, x, y) => {
-  if (it) {
-    menu(drawingMenu(it), x, y);
-    return;
+// A chart's own callbacks, and its drawings' (each chart has its own: the toolbars work on the active one's).
+function wirePane(p) {
+  const c = p.chart;
+  const d = p.D;
+  c.onFrame = (took, sinceData) => {
+    const ema = (old, v) => (Number.isFinite(old) ? old * 0.8 + v * 0.2 : v);
+    app.perf.render = ema(app.perf.render, took);
+    if (sinceData > 0) app.perf.delay = ema(app.perf.delay, sinceData);
+  };
+  c.onNeedHistory = () => loadMore(p);
+  c.onHover = (i) => {
+    p.hover = i;
+    renderLegend(p);
+  };
+  c.onViewChange = () => paintCorner(p);
+  c.onOpenSettings = (it) => openDrawingSettings(it);
+  c.onContextMenu = (it, x, y) => {
+    if (it) {
+      menu(drawingMenu(it), x, y);
+      return;
+    }
+    menu([
+      { label: 'Reset the view', hint: 'Alt+R', action: () => c.resetTime() },
+      { label: 'Auto scale', check: c.view.auto, action: () => {
+        c.view.auto = !c.view.auto;
+        c.invalidate();
+        paintCorner(p);
+      } },
+      { sep: true },
+      { label: 'Chart settings...', icon: 'gear', action: openChartSettings },
+      { label: 'Import templates...', action: importTemplates },
+      { label: 'Export templates...', action: exportTemplates },
+      { sep: true },
+      { label: 'Remove every drawing...', icon: 'trash', danger: true, disabled: !d.items.length, action: () => removeBtn.click() },
+    ], x, y);
+  };
+  d.magnet = !!app.layout.magnet;
+  d.stay = !!app.layout.stay;
+  if (active) {
+    // like the other charts: their style, and their drawings locked or hidden
+    c.style = active.chart.style;
+    c.serverOffset = active.chart.serverOffset;
+    c.equity = active.chart.equity;
+    d.locked = active.D.locked;
+    d.hidden = active.D.hidden;
+    c.layout();
   }
-  menu([
-    { label: 'Reset the view', hint: 'Alt+R', action: () => chart.resetTime() },
-    { label: 'Auto scale', check: chart.view.auto, action: () => {
-      chart.view.auto = !chart.view.auto;
-      chart.invalidate();
-      paintCorner();
-    } },
-    { sep: true },
-    { label: 'Chart settings...', icon: 'gear', action: openChartSettings },
-    { label: 'Import templates...', action: importTemplates },
-    { label: 'Export templates...', action: exportTemplates },
-    { sep: true },
-    { label: 'Remove every drawing...', icon: 'trash', danger: true, disabled: !D.items.length, action: () => removeBtn.click() },
-  ], x, y);
-};
-
-D.onChange = (items) => {
-  if (D.owner) saveDrawings(D.owner, items);
-  renderTop();
-  chart.invalidate();
-};
-D.onSelect = () => {
-  renderFtb();
-  chart.invalidate();
-};
-D.onTool = () => {
-  paintTools();
-  chart.invalidate();
-};
-D.onEditText = async (it) => {
-  const v = await prompt({ title: 'Text', value: it.s.text.value, multiline: true });
-  if (v !== null) D.setStyle(it.id, 'text.value', v);
-  chart.invalidate();
-};
-D.templateFor = (type) => toolStart(app.templates, type);
+  d.onChange = (items) => {
+    if (d.owner) {
+      saveDrawings(d.owner, items);
+      shareDrawings(p);
+    }
+    if (p === active) renderTop();
+    c.invalidate();
+  };
+  d.onSelect = () => {
+    if (p === active) renderFtb();
+    c.invalidate();
+  };
+  d.onTool = () => {
+    if (p === active) paintTools();
+    c.invalidate();
+  };
+  d.onEditText = async (it) => {
+    const v = await prompt({ title: 'Text', value: it.s.text.value, multiline: true });
+    if (v !== null) d.setStyle(it.id, 'text.value', v);
+    c.invalidate();
+  };
+  d.templateFor = (type) => toolStart(app.templates, type);
+}
 
 function updateNotice() {
   if (!feed) {
@@ -1191,7 +1400,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 window.addEventListener('beforeunload', () => {
-  if (D.owner) saveDrawings.flush(D.owner, D.items);
+  for (const q of panes) if (q.D.owner) saveDrawings.flush(q.D.owner, q.D.items);
   saveLayout.flush();
 });
 
@@ -1206,10 +1415,22 @@ async function start() {
   if (templates) app.templates = readTemplates(templates).templates;
   app.layout = { ...clone(LAYOUT_DEFAULT), ...(layout || {}) };
   if (!isTimeframe(app.layout.tf)) app.layout.tf = 'H1';
+  if (!Array.isArray(app.layout.panes) || !app.layout.panes.length) app.layout.panes = [{ symbol: app.layout.symbol, tf: app.layout.tf }];
+  const first = app.layout.panes[0] || {};
+  active.symbol = first.symbol || '';
+  active.tf = isTimeframe(first.tf) ? first.tf : app.layout.tf;
   chart.style = merge(chartStart(emptyTemplates()), app.layout.style || chartStart(app.templates));
   D.magnet = !!app.layout.magnet;
   D.stay = !!app.layout.stay;
   chart.layout();
+  const wanted = Math.min(Math.max(0, Number(app.layout.active) || 0), gridOf(app.layout.grid).n - 1);
+  setGrid(app.layout.grid);
+  activate(panes[wanted] || panes[0]);
+  if (active.symbol) {
+    app.layout.symbol = active.symbol;
+    app.layout.tf = active.tf;
+  }
+  ready = true;
   if (app.layout.watchWidth) watch.setWidth(app.layout.watchWidth);
   showWatchlist();
   renderTop();
@@ -1218,12 +1439,13 @@ async function start() {
   for (const b of groupBtns.values()) b.paint();   // each group's last tool, from the saved layout
   placeTools();
   paintTools();
-  paintCorner();
-  renderLegend();
+  for (const q of panes) paintCorner(q);
+  renderLegends();
   updateNotice();
   paintNet();
-  // With MT5 already linked, load now; otherwise the feed's link (resync) loads it.
-  if (app.layout.symbol && feed && feed.feedOn) loadChart(app.layout.symbol, app.layout.tf);
+  showActive();
+  // With MT5 already linked, load now; otherwise the feed's link (resync) loads them.
+  if (feed && feed.feedOn) loadAll();
 }
 
 start();
