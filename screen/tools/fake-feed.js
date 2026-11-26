@@ -303,7 +303,8 @@ function handleTicket(req) {
       const ticket = nextTicket++;
       const side = pv.req.side === 'buy' ? 1 : -1;
       const pending = !!pv.req.pending;
-      trades.push({ ticket, symbol: pv.req.symbol, kind: pending ? 'order' : 'position', type: pv.p.type, side, lots: pv.p.lots, open: pv.p.entry, sl: pv.p.sl, tp: pv.p.tp, locked: false });
+      trades.push({ ticket, symbol: pv.req.symbol, kind: pending ? 'order' : 'position', type: pv.p.type, side, lots: pv.p.lots, open: pv.p.entry, sl: pv.p.sl, tp: pv.p.tp, locked: false,
+        ...(pending ? {} : { openMsc: now() * 1000 }) });
       reply(id, true, { ticket, type: pv.p.type, pending, price: pv.p.entry, lots: pv.p.lots,
         fill: { slipped: false, slipPips: 0, slMoved: false, tpMoved: false, notMoved: '', sl: pv.p.sl, tp: pv.p.tp, risk: pv.p.riskMoney, plannedRisk: pv.p.riskMoney } });
       return tsend(tradesMsg());

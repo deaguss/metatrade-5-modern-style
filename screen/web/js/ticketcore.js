@@ -151,6 +151,7 @@ export function tradesOf(trades, symbol) {
     tpMoney: t.tp > 0 && Number.isFinite(t.tpMoney) ? t.tpMoney : NaN,
     digits: t.digits,
     locked: !!t.locked,
+    openMsc: t.openMsc > 0 ? t.openMsc : 0,   // when a position opened (server time, ms)
   }));
 }
 

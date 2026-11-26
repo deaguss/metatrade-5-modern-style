@@ -1,7 +1,7 @@
 // The ticket's lines on the chart: the order being previewed (entry, stop loss, take profit, with
 // the money at each, dragged to change them) and the open trades of the chart's symbol (dragged to
 // open a change card, x to close or remove). Drawn after the drawings, hit before them.
-import { formatPrice, textOn } from './util.js';
+import { formatPrice, textOn, withAlpha } from './util.js';
 import { tradesOf, pipsText } from './ticketcore.js';
 
 const COL = { tp: '#089981', sl: '#f23645', entry: '#787b86', buy: '#2962ff', sell: '#f23645', chip: '#161616', edge: '#4a4a4a' };
@@ -84,8 +84,8 @@ export class TradeLayer {
   }
 
   draw(c) {
-    // Open positions show in full. A pending order shows its entry line only, faint, until the mouse
-    // is on it (or its label was clicked): then its label, stop and target show too.
+    // Open positions show in full. A pending order shows its entry line and price only until the
+    // mouse is on it (or its label was clicked): then its label, stop and target show too.
     let hover = 0;
     if (c.mouse) {
       const chip = this.hitChip(c.mouse.x, c.mouse.y);
@@ -106,21 +106,52 @@ export class TradeLayer {
     const symbol = this.where.symbol();
     const full = (tr) => tr.position || tr.ticket === hover || tr.ticket === this.pinned || !!(pc && pc.ticket === tr.ticket);
     const trades = tradesOf(this.t.trades, symbol).sort((a, b) => full(a) - full(b));   // the one in full on top
+    // First, behind every line: a faint zone like a long or short position's, red from the entry to
+    // the stop and green to the target, from when the position opened (a pending order in focus: across).
+    // Each colour is filled once, as one shape: several trades at one level stay as faint as one.
+    const zones = { sl: new Path2D(), tp: new Path2D() };
+    let anyZone = false;
+    for (const tr of trades) {
+      if (!full(tr)) continue;
+      const lv = (which) => (pc && pc.ticket === tr.ticket && pc.which === which ? pc.price : which === 'open' ? tr.open : tr[which]);
+      let x0 = 0;
+      if (tr.openMsc > 0) {
+        let x = NaN;
+        try {
+          x = c.x(Math.floor(tr.openMsc / 1000));
+        } catch (e) {
+          // no bars yet: across the chart
+        }
+        x0 = Number.isFinite(x) ? Math.max(0, Math.min(c.w, x)) : 0;
+      }
+      const ye0 = c.y(lv('open'));
+      for (const which of ['sl', 'tp']) {
+        const p = lv(which);
+        if (!(p > 0)) continue;
+        const y1 = c.y(p);
+        zones[which].rect(x0, Math.min(ye0, y1), c.w - x0, Math.abs(y1 - ye0));
+        anyZone = true;
+      }
+    }
+    if (anyZone) {
+      g.fillStyle = withAlpha(COL.sl, 0.07);
+      g.fill(zones.sl, 'nonzero');
+      g.fillStyle = withAlpha(COL.tp, 0.07);
+      g.fill(zones.tp, 'nonzero');
+    }
     for (const tr of trades) {
       const shown = full(tr);
       const lvl = (which) => (pc && pc.ticket === tr.ticket && pc.which === which ? pc.price : which === 'open' ? tr.open : tr[which]);
       const moved = (which) => pc && pc.ticket === tr.ticket && pc.which === which;
-      g.globalAlpha = shown ? 1 : 0.45;
       const ye = this.level(c, lvl('open'), tr.position ? COL.entry : COL.buy, true);
-      g.globalAlpha = 1;
       this.entries.push({ y: ye, trade: tr });
       const sideBg = tr.side > 0 ? COL.buy : COL.sell;
       const parts = [{ t: tr.type + ' ' + Number(tr.lots).toFixed(this.t.lotDigits), bg: sideBg }];
       parts.push(tr.position ? { t: cash(tr.profit), fg: tr.profit >= 0 ? '#22ab94' : '#ff6b76', bg: COL.chip, bd: COL.edge } : { t: 'pending', fg: '#b2b5be', bg: COL.chip, bd: COL.edge });
       parts.push({ t: 'x', fg: '#b2b5be', bg: COL.chip, bd: COL.edge });
       if (!tr.position && !tr.locked) this.lines.push({ y: ye, kind: 'trade', which: 'open', trade: tr });
-      if (!shown) continue;   // a pending order out of focus: its faint line only
       c.priceTags.push({ y: ye, text: fmt(lvl('open')), bg: tr.position ? COL.entry : COL.buy });
+      if (!shown) continue;   // a pending order out of focus: its line and price only
       for (const which of ['sl', 'tp']) {
         const p = lvl(which);
         if (!(p > 0)) continue;
