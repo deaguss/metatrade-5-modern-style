@@ -321,6 +321,8 @@ sealed class Glue
     // MT5's chart area once and then left where the trader puts it.
     void Release(Screen sc)
     {
+        // A window of its own that Edge opened maximized (the trader maximized it last time) stays so.
+        bool maximized = Native.IsZoomed(sc.Win);
         Native.SetWindowLongPtr(sc.Win, Native.GWLP_HWNDPARENT, IntPtr.Zero);
         long ex = (long)Native.GetWindowLongPtr(sc.Win, Native.GWL_EXSTYLE);
         ex = (ex & ~Native.WS_EX_TOOLWINDOW) | Native.WS_EX_APPWINDOW;
@@ -329,9 +331,9 @@ sealed class Glue
         Native.SetWindowRgn(sc.Win, IntPtr.Zero, true);
         sc.RgnW = 0;   // no region now: set again when glued
         Native.RECT r;
-        if (Native.GetWindowRect(sc.Mdi, out r) && r.W > 200 && r.H > 150)
+        if (!maximized && Native.GetWindowRect(sc.Mdi, out r) && r.W > 200 && r.H > 150)
             Native.SetWindowPos(sc.Win, IntPtr.Zero, r.L, r.T, r.W, r.H, Native.SWP_NOZORDER | Native.SWP_FRAMECHANGED);
-        if (!sc.Hidden) Native.ShowWindow(sc.Win, Native.SW_SHOWNORMAL);
+        if (!sc.Hidden) Native.ShowWindow(sc.Win, maximized ? 3 : Native.SW_SHOWNORMAL);   // 3: SW_SHOWMAXIMIZED
         sc.Placed = false;
         Log.Write("The screen of MT5 " + sc.Pid + " is a window of its own.");
     }
