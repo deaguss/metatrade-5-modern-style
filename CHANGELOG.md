@@ -50,8 +50,7 @@ All notable changes to MetaTrader 5 Modern Style are recorded here. The format f
 - The watchlist shows a price for a symbol with no tick yet (its last bar's close) and its change once
   MetaTrader 5 has loaded yesterday's bar, instead of "-".
 - A busy chart stays readable: a pending order shows its faint entry line only until the mouse is on
-  it (or its label is clicked), labels of trades at nearly the same price sit side by side instead
-  of on top of each other, and a long or short position drawing shows its stats while the mouse is
+  it (or its label is clicked), and a long or short position drawing shows its stats while the mouse is
   on it or it is selected (or always, with its **Always show stats** setting).
 - The watchlist drops the Chg column, then Chg%, as it gets narrower, so no column is cut off.
 - The chart no longer flickers while a panel beside it is dragged, nor the glued screen while

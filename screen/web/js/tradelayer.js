@@ -17,7 +17,6 @@ export class TradeLayer {
     this.hits = [];     // chips' buttons from the last frame: {x, y, w, h, fn}
     this.lines = [];    // draggable lines from the last frame: {y, kind, which, trade}
     this.drag = null;
-    this.placed = [];
     this.entries = [];
     this.pinned = 0;    // the trade shown in full after a click on its label, until clicked again
   }
@@ -66,14 +65,6 @@ export class TradeLayer {
     if (r && xr > r.x - 4 && xr - w < r.x + r.w + 4 && y >= r.y - 12 && y <= r.y + r.h + 12) {
       x = r.x - 8 - w >= 2 ? Math.min(xr, r.x - 8) : Math.min(c.w - 2, r.x + r.w + 8 + w);
     }
-    // Two rows at nearly the same price (two trades opened close together) would hide each other:
-    // the later one goes to the left of the one already there.
-    for (let k = 0; k < 6; k++) {
-      const hit = this.placed.find((p) => Math.abs(p.y - y) < 20 && x > p.x - 4 && x - w < p.x + p.w + 4);
-      if (!hit) break;
-      x = hit.x - 6;
-    }
-    this.placed.push({ x: x - w, y, w });
     return this.chips(c.g, x, y, parts);
   }
 
@@ -104,7 +95,6 @@ export class TradeLayer {
     }
     this.hits = [];
     this.lines = [];
-    this.placed = [];   // the rows of chips drawn so far this frame
     this.entries = [];  // every trade's entry line: the mouse on one shows that trade in full
     const g = c.g;
     const fmt = (p) => formatPrice(p, c.digits);
