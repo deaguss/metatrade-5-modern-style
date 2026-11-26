@@ -45,6 +45,8 @@ All notable changes to MetaTrader 5 Modern Style are recorded here. The format f
   maximized, so the page showed cut, with its title bar and a grey area around it).
 - InnaChart no longer closes its screen while MetaTrader 5 shows a login window or another window in
   front of its charts.
+- InnaChart's icons are sharp at any display scale: the logo is drawn at the exact size of the tray,
+  the window's title bar and its taskbar button, and InnaChart.exe carries it at every size.
 - A watchlist or a second screen shows the prices at once, instead of "-" until each symbol's next
   tick.
 

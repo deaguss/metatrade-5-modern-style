@@ -22,7 +22,7 @@ static class Native
         public int W { get { return R - L; } }
         public int H { get { return B - T; } }
         public bool Same(RECT o) { return L == o.L && T == o.T && R == o.R && B == o.B; }
-        // Within a few pixels: Windows rounds the places of a program that is not DPI aware.
+        // Within a few pixels: Windows may round a window's place (its frame, the display scale).
         public bool Near(RECT o, int by) { return Math.Abs(L - o.L) <= by && Math.Abs(T - o.T) <= by && Math.Abs(R - o.R) <= by && Math.Abs(B - o.B) <= by; }
     }
 
@@ -49,12 +49,16 @@ static class Native
     [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
     [DllImport("user32.dll")] public static extern bool SetProcessDpiAwarenessContext(IntPtr value);
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+    [DllImport("user32.dll")] public static extern IntPtr SendMessageTimeout(IntPtr h, uint msg, IntPtr w, IntPtr l, uint flags, uint ms, out IntPtr result);
+    [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr h);
+    [DllImport("user32.dll")] public static extern int GetSystemMetricsForDpi(int index, uint dpi);
 
     public const int GWL_STYLE = -16, GWL_EXSTYLE = -20, GWLP_HWNDPARENT = -8;
     public const long WS_EX_APPWINDOW = 0x40000, WS_EX_TOOLWINDOW = 0x80;
     public const uint SWP_NOZORDER = 0x4, SWP_NOACTIVATE = 0x10, SWP_FRAMECHANGED = 0x20;
     public const int SW_HIDE = 0, SW_SHOWNORMAL = 1, SW_SHOWNOACTIVATE = 4;
-    public const uint WM_CLOSE = 0x10;
+    public const uint WM_CLOSE = 0x10, WM_GETICON = 0x7F, WM_SETICON = 0x80, SMTO_ABORTIFHUNG = 0x2;
+    public const int SM_CXICON = 11, SM_CXSMICON = 49;
     public const uint EVENT_OBJECT_LOCATIONCHANGE = 0x800B, WINEVENT_OUTOFCONTEXT = 0;
 
     public static void DpiAware()
@@ -100,6 +104,7 @@ sealed class Screen
     public Native.RECT Last;      // the chart area it was last placed on
     public Native.RECT Outer;     // where its window was put then
     public DateTime FixedAt;      // when it was last put back after moving by itself
+    public DateTime IconAt;       // when its icon was last checked
     public int InL, InT, InR, InB;
     public bool Placed;
     public IntPtr Hook;
@@ -272,6 +277,7 @@ sealed class Glue
             if (Native.IsWindowVisible(sc.Win)) Native.ShowWindow(sc.Win, Native.SW_HIDE);
             return;
         }
+        KeepIcon(sc);
         if (Separate)
         {
             if (!Native.IsWindowVisible(sc.Win)) Native.ShowWindow(sc.Win, Native.SW_SHOWNOACTIVATE);
@@ -280,6 +286,31 @@ sealed class Glue
         if (Native.IsIconic(sc.Main)) return;   // an owned window hides with its owner
         if (!Native.IsWindowVisible(sc.Win)) Native.ShowWindow(sc.Win, Native.SW_SHOWNOACTIVATE);
         Place(sc, false);
+    }
+
+    // Edge gives the window the page's small icon, stretched for the title bar and the taskbar, so
+    // it looks blurred: the logo at the window's own sizes instead. Edge sets its own again now and
+    // then (a page loads), so it is checked every 2 seconds.
+    void KeepIcon(Screen sc)
+    {
+        if (DateTime.Now - sc.IconAt < TimeSpan.FromSeconds(2)) return;
+        sc.IconAt = DateTime.Now;
+        int small = SystemInformation.SmallIconSize.Width, big = SystemInformation.IconSize.Width;
+        try
+        {
+            uint dpi = Native.GetDpiForWindow(sc.Win);
+            if (dpi > 0)
+            {
+                small = Native.GetSystemMetricsForDpi(Native.SM_CXSMICON, dpi);
+                big = Native.GetSystemMetricsForDpi(Native.SM_CXICON, dpi);
+            }
+        }
+        catch (EntryPointNotFoundException) { }   // before Windows 10 1607: the system's sizes
+        IntPtr hs = Logo.Icon(small).Handle, hb = Logo.Icon(big).Handle, now;
+        Native.SendMessageTimeout(sc.Win, Native.WM_GETICON, new IntPtr(1), IntPtr.Zero, Native.SMTO_ABORTIFHUNG, 100, out now);
+        if (now == hb) return;
+        Native.SendMessageTimeout(sc.Win, Native.WM_SETICON, IntPtr.Zero, hs, Native.SMTO_ABORTIFHUNG, 100, out now);
+        Native.SendMessageTimeout(sc.Win, Native.WM_SETICON, new IntPtr(1), hb, Native.SMTO_ABORTIFHUNG, 100, out now);
     }
 
     // A window of its own again: no owner, a taskbar button, its title bar and borders, placed on

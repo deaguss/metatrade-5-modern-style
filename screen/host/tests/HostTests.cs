@@ -221,6 +221,16 @@ static class HostTests
         Equal("", Routing.KeyOf("{\"t\":\"host.auth\",\"key\":5}"), "a key that is not text");
         Equal("", Routing.KeyOf("{"), "not JSON");
 
+        // The logo: an .ico with every size (each a PNG), and icons of the exact size asked for.
+        byte[] ico = Logo.Ico(new[] { 16, 20, 256 });
+        Check(ico[0] == 0 && ico[1] == 0 && ico[2] == 1 && ico[3] == 0 && ico[4] == 3, "an .ico header with 3 sizes");
+        Check(ico[6] == 16 && ico[22] == 20 && ico[38] == 0, "16, 20 and 256 (written as 0)");
+        int first = BitConverter.ToInt32(ico, 6 + 12);
+        Check(ico[first] == 0x89 && ico[first + 1] == (byte)'P' && ico[first + 2] == (byte)'N' && ico[first + 3] == (byte)'G', "each size kept as a PNG");
+        Equal(20, Logo.Icon(20).Width, "an icon of the tray's size at 125%");
+        Equal(40, Logo.Icon(40).Width, "and of a large icon at 125%");
+        Check(Logo.Icon(20) == Logo.Icon(20), "made once, then kept");
+
         var qc = new QuoteCache();
         qc.Keep(7, "{\"t\":\"quote\",\"sym\":\"XAUUSD\",\"bid\":2650.1,\"ask\":2650.3,\"prev\":2640}");
         qc.Keep(7, "{\"t\":\"quote\",\"sym\":\"EURUSD\",\"bid\":1.085,\"ask\":1.0851,\"prev\":1.08}");

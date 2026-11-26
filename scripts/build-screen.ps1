@@ -30,7 +30,7 @@ $HostDir = Join-Path $Repo 'screen\host'
 if (-not $Out) { $Out = Join-Path $Repo 'build\screen' }
 New-Item -ItemType Directory -Force -Path $Out | Out-Null
 
-$Parts = @('Frames.cs', 'Feed.cs', 'Web.cs', 'Store.cs', 'Log.cs', 'Routing.cs', 'Glue.cs', 'Host.cs') | ForEach-Object { Join-Path $HostDir $_ }
+$Parts = @('Frames.cs', 'Feed.cs', 'Web.cs', 'Store.cs', 'Log.cs', 'Routing.cs', 'Logo.cs', 'Glue.cs', 'Host.cs') | ForEach-Object { Join-Path $HostDir $_ }
 $Refs = @('/r:System.dll', '/r:System.Core.dll', '/r:System.Drawing.dll', '/r:System.Windows.Forms.dll', '/r:System.Web.Extensions.dll')
 
 function Invoke-Csc([string[]]$Arguments) {
@@ -40,8 +40,17 @@ function Invoke-Csc([string[]]$Arguments) {
     if ($code -ne 0) { throw "The C# compiler failed (exit code $code)." }
 }
 
+# The logo at every size, put inside InnaChart.exe: Explorer, the Start menu and shortcuts show it sharp.
+$ToolDir = Join-Path $Repo 'build\tools'
+New-Item -ItemType Directory -Force -Path $ToolDir | Out-Null
+$IconTool = Join-Path $ToolDir 'WriteIcon.exe'
+$Ico = Join-Path $ToolDir 'InnaChart.ico'
+Invoke-Csc (@('/nologo', '/target:exe', '/warn:4', "/out:$IconTool") + $Refs + (Join-Path $HostDir 'Logo.cs') + (Join-Path $HostDir 'tools\WriteIcon.cs'))
+& $IconTool $Ico
+if ($LASTEXITCODE -ne 0) { throw 'The icon could not be written.' }
+
 $Exe = Join-Path $Out 'InnaChart.exe'
-Invoke-Csc (@('/nologo', '/target:winexe', '/optimize+', '/warn:4', "/out:$Exe") + $Refs + $Parts + (Join-Path $HostDir 'Program.cs'))
+Invoke-Csc (@('/nologo', '/target:winexe', '/optimize+', '/warn:4', "/out:$Exe", "/win32icon:$Ico") + $Refs + $Parts + (Join-Path $HostDir 'Program.cs'))
 Write-Host "Built $Exe"
 
 $Web = Join-Path $Out 'web'

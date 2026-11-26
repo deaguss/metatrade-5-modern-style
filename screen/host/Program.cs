@@ -126,7 +126,7 @@ sealed class Tray : ApplicationContext
 
         icon = new NotifyIcon
         {
-            Icon = MakeIcon(),
+            Icon = Logo.Icon(SystemInformation.SmallIconSize.Width),   // the tray's own size: never stretched
             Text = "InnaChart (Ctrl+Alt+M shows or hides it)",
             ContextMenuStrip = menu,
             Visible = visible,
@@ -171,49 +171,6 @@ sealed class Tray : ApplicationContext
             Ui.Dispose();
         }
         base.Dispose(disposing);
-    }
-
-    // InnaChart's logo (screen/web/img/logo.svg), drawn: the i of Inna as a rising candle with its
-    // dot, a hollow falling candle beside it, on a blue rounded square.
-    static Icon MakeIcon()
-    {
-        const float k = 32f / 64f;   // the logo is drawn on 64 x 64
-        using (var bmp = new Bitmap(32, 32))
-        {
-            using (Graphics g = Graphics.FromImage(bmp))
-            {
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                g.Clear(Color.Transparent);
-                g.ScaleTransform(k, k);
-                using (var path = Rounded(0, 0, 64, 64, 15))
-                using (var bg = new LinearGradientBrush(new PointF(0, 0), new PointF(64, 64), Color.FromArgb(59, 108, 255), Color.FromArgb(22, 54, 184)))
-                    g.FillPath(bg, path);
-                using (var white = new SolidBrush(Color.White))
-                using (var light = new SolidBrush(Color.FromArgb(207, 220, 255)))
-                using (var outline = new Pen(Color.FromArgb(207, 220, 255), 2.5f))
-                {
-                    g.FillEllipse(white, 24 - 5.5f, 14.5f - 5.5f, 11, 11);
-                    using (var p = Rounded(22.5f, 23, 3, 30, 1.5f)) g.FillPath(white, p);
-                    using (var p = Rounded(17, 28, 14, 18, 3)) g.FillPath(white, p);
-                    using (var p = Rounded(40.5f, 14, 3, 8, 1.5f)) g.FillPath(light, p);
-                    using (var p = Rounded(35.25f, 21.25f, 13.5f, 15.5f, 3)) g.DrawPath(outline, p);
-                    using (var p = Rounded(40.5f, 36, 3, 10, 1.5f)) g.FillPath(light, p);
-                }
-            }
-            return Icon.FromHandle(bmp.GetHicon());
-        }
-    }
-
-    static GraphicsPath Rounded(float x, float y, float w, float h, float r)
-    {
-        var path = new GraphicsPath();
-        float d = r * 2;
-        path.AddArc(x, y, d, d, 180, 90);
-        path.AddArc(x + w - d, y, d, d, 270, 90);
-        path.AddArc(x + w - d, y + h - d, d, d, 0, 90);
-        path.AddArc(x, y + h - d, d, d, 90, 90);
-        path.CloseFigure();
-        return path;
     }
 
     sealed class HotkeyWindow : NativeWindow
