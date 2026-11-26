@@ -88,6 +88,57 @@ static class Routing
     }
 }
 
+// The last quote of each symbol an MT5 sent. The feed sends a symbol again only when its price
+// moves, so a screen that starts showing a symbol another screen already shows gets it from here at
+// once, instead of a "-" until the next tick.
+sealed class QuoteCache
+{
+    static readonly Regex Sym = new Regex("\"sym\":\"((?:[^\"\\\\]|\\\\.)*)\"");
+    readonly Dictionary<string, string> last = new Dictionary<string, string>();   // "pid|symbol" -> its quote
+
+    // The symbol of a quote message, or null.
+    public static string SymbolOf(string json)
+    {
+        Match m = Sym.Match(json ?? "");
+        return m.Success ? m.Groups[1].Value.Replace("\\\"", "\"").Replace("\\\\", "\\") : null;
+    }
+
+    public void Keep(int pid, string json)
+    {
+        string sym = SymbolOf(json);
+        if (sym == null) return;
+        lock (last) last[pid + "|" + sym] = json;
+    }
+
+    // The quotes known for the symbols of a list ("a\nb"), in its order.
+    public List<string> For(int pid, string list)
+    {
+        var found = new List<string>();
+        if (string.IsNullOrEmpty(list)) return found;
+        lock (last)
+            foreach (string sym in list.Split('\n'))
+            {
+                string json;
+                if (sym.Length > 0 && last.TryGetValue(pid + "|" + sym, out json)) found.Add(json);
+            }
+        return found;
+    }
+
+    // An MT5 that went away: its quotes are old news.
+    public void Forget(int pid)
+    {
+        string head = pid + "|";
+        lock (last)
+        {
+            var gone = new List<string>();
+            foreach (string k in last.Keys) if (k.StartsWith(head, StringComparison.Ordinal)) gone.Add(k);
+            foreach (string k in gone) last.Remove(k);
+        }
+    }
+
+    public int Count { get { lock (last) return last.Count; } }
+}
+
 // The requests sent on to a feed and waiting for their replies: the program's id -> the screen
 // and the id it used.
 sealed class Waiting

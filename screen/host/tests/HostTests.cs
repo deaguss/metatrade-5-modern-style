@@ -221,6 +221,23 @@ static class HostTests
         Equal("", Routing.KeyOf("{\"t\":\"host.auth\",\"key\":5}"), "a key that is not text");
         Equal("", Routing.KeyOf("{"), "not JSON");
 
+        var qc = new QuoteCache();
+        qc.Keep(7, "{\"t\":\"quote\",\"sym\":\"XAUUSD\",\"bid\":2650.1,\"ask\":2650.3,\"prev\":2640}");
+        qc.Keep(7, "{\"t\":\"quote\",\"sym\":\"EURUSD\",\"bid\":1.085,\"ask\":1.0851,\"prev\":1.08}");
+        qc.Keep(7, "{\"t\":\"quote\",\"sym\":\"XAUUSD\",\"bid\":2651.1,\"ask\":2651.3,\"prev\":2640}");
+        qc.Keep(8, "{\"t\":\"quote\",\"sym\":\"XAUUSD\",\"bid\":9,\"ask\":9,\"prev\":9}");
+        qc.Keep(7, "{\"t\":\"quote\",\"bid\":1}");
+        var known = qc.For(7, "EURUSD\nGBPUSD\nXAUUSD");
+        Equal(2, known.Count, "a new screen gets the quotes already known for its symbols, none for the others");
+        Check(known.Count == 2 && known[0].Contains("EURUSD") && known[1].Contains("2651.1"), "in its list's order, the newest of each");
+        Equal(0, qc.For(9, "XAUUSD").Count, "another MT5's quotes stay its own");
+        Equal(3, qc.Count, "a quote without a symbol is not kept");
+        Equal("US30.cash", QuoteCache.SymbolOf("{\"t\":\"quote\",\"sym\":\"US30.cash\",\"bid\":1}"), "a symbol with a dot");
+        Equal("A\"B", QuoteCache.SymbolOf("{\"t\":\"quote\",\"sym\":\"A\\\"B\",\"bid\":1}"), "an escaped quote in a symbol");
+        qc.Forget(7);
+        Equal(0, qc.For(7, "XAUUSD\nEURUSD").Count, "an MT5 that went away: its quotes are forgotten");
+        Equal(1, qc.Count, "the other MT5's stay");
+
         var w = new Waiting();
         var a = new ScreenSession { Pid = 1 };
         var b = new ScreenSession { Pid = 1 };

@@ -41,6 +41,12 @@ All notable changes to MetaTrader 5 Modern Style are recorded here. The format f
   price, a buy limit under it); another symbol's entry or price levels are not kept.
 - When the price crosses a pending entry and the order turns into the other type (a limit into a
   stop), the ticket says so and Confirm waits 2 seconds.
+- InnaChart is glued on properly again when its window was once maximized (Edge opened it
+  maximized, so the page showed cut, with its title bar and a grey area around it).
+- InnaChart no longer closes its screen while MetaTrader 5 shows a login window or another window in
+  front of its charts.
+- A watchlist or a second screen shows the prices at once, instead of "-" until each symbol's next
+  tick.
 
 ## [1.2.0] - 2026-11-25
 

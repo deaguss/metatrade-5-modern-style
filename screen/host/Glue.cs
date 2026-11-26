@@ -22,6 +22,8 @@ static class Native
         public int W { get { return R - L; } }
         public int H { get { return B - T; } }
         public bool Same(RECT o) { return L == o.L && T == o.T && R == o.R && B == o.B; }
+        // Within a few pixels: Windows rounds the places of a program that is not DPI aware.
+        public bool Near(RECT o, int by) { return Math.Abs(L - o.L) <= by && Math.Abs(T - o.T) <= by && Math.Abs(R - o.R) <= by && Math.Abs(B - o.B) <= by; }
     }
 
     [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc f, IntPtr l);
@@ -36,6 +38,7 @@ static class Native
     [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr h);
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
     [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
+    [DllImport("user32.dll")] public static extern bool IsZoomed(IntPtr h);
     [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
     [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint msg, IntPtr w, IntPtr l);
     [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
@@ -95,6 +98,8 @@ sealed class Screen
     public bool Hidden;           // hidden by the trader: MT5's own charts show
     public bool Lost;             // the window was closed without us: not opened again until Show
     public Native.RECT Last;      // the chart area it was last placed on
+    public Native.RECT Outer;     // where its window was put then
+    public DateTime FixedAt;      // when it was last put back after moving by itself
     public int InL, InT, InR, InB;
     public bool Placed;
     public IntPtr Hook;
@@ -194,7 +199,12 @@ sealed class Glue
                 catch (InvalidOperationException) { continue; }
                 if (main == IntPtr.Zero) continue;
                 IntPtr mdi = Native.FindWindowEx(main, IntPtr.Zero, "MDIClient", null);
-                if (mdi == IntPtr.Zero) continue;   // still starting (or a login window)
+                if (mdi == IntPtr.Zero)
+                {
+                    // Still starting, or a login window in front for now: a screen it has stays.
+                    if (screens.ContainsKey(p.Id)) alive.Add(p.Id);
+                    continue;
+                }
                 alive.Add(p.Id);
                 Screen sc;
                 if (!screens.TryGetValue(p.Id, out sc))
@@ -378,7 +388,25 @@ sealed class Glue
     {
         Native.RECT target;
         if (!Native.GetWindowRect(sc.Mdi, out target) || target.W <= 0 || target.H <= 0) return;
-        if (!force && sc.Placed && target.Same(sc.Last)) return;
+        // Edge opens a window maximized again once it was maximized, and a maximized or minimized
+        // window stays where Windows keeps it: the page then shows cut, with its title bar. A normal
+        // window first, then glued on.
+        if (Native.IsZoomed(sc.Win) || Native.IsIconic(sc.Win))
+        {
+            Native.ShowWindow(sc.Win, Native.SW_SHOWNOACTIVATE);
+            Log.Write("The screen of MT5 " + sc.Pid + " was maximized or minimized; glued on again.");
+            force = true;
+        }
+        if (!force && sc.Placed && target.Same(sc.Last))
+        {
+            // The window still where it was put? It may have moved by itself (made full screen,
+            // say); then it is put back, at most once a second.
+            Native.RECT now;
+            if (!Native.GetWindowRect(sc.Win, out now) || now.Near(sc.Outer, 3)) return;
+            if (DateTime.Now - sc.FixedAt < TimeSpan.FromSeconds(1)) return;
+            sc.FixedAt = DateTime.Now;
+            Log.Write("The screen of MT5 " + sc.Pid + " moved by itself; glued on again.");
+        }
         // Measure the frame around the page each time: Edge may change it (zoom, DPI).
         IntPtr content = Content(sc.Win);
         Native.RECT w, c;
@@ -393,6 +421,7 @@ sealed class Glue
         Native.SetWindowPos(sc.Win, IntPtr.Zero, outer.L, outer.T, outer.W, outer.H, Native.SWP_NOZORDER | Native.SWP_NOACTIVATE);
         Native.SetWindowRgn(sc.Win, Native.CreateRectRgn(sc.InL, sc.InT, sc.InL + target.W, sc.InT + target.H), true);
         sc.Last = target;
+        Native.GetWindowRect(sc.Win, out sc.Outer);   // as Windows put it (rounded)
         sc.Placed = true;
     }
 

@@ -67,6 +67,7 @@ sealed class Host
 
     readonly Options options;
     readonly string key;
+    readonly QuoteCache quotes = new QuoteCache();
     FeedServer feed;
     FeedServer ticket;     // the ActionInna EA's order ticket (one chart per MT5 serves it)
     string ticketKey;
@@ -109,7 +110,11 @@ sealed class Host
             UpdatePulse(t.Pid);
             Broadcast(t.Pid, Status(t.Pid));
         };
-        feed.Disconnected += t => Broadcast(t.Pid, Status(t.Pid));
+        feed.Disconnected += t =>
+        {
+            quotes.Forget(t.Pid);
+            Broadcast(t.Pid, Status(t.Pid));
+        };
         feed.Message += OnFeed;
         feed.Start();
         StartTicket();
@@ -241,6 +246,7 @@ sealed class Host
         }
         if (mine > 0) return;   // its screen has gone
         if (type == "hello") UpdatePulse(term.Pid);
+        if (type == "quote") quotes.Keep(term.Pid, json);
         Broadcast(term.Pid, json);
     }
 
@@ -307,6 +313,8 @@ sealed class Host
                     if (type == "watch") session.Watch = list;
                     else session.Quotes = list;
                     SendJoined(pid, type);
+                    // the prices already known, now: the feed resends a symbol only when it moves
+                    if (type == "quotes") foreach (string q in quotes.For(pid, list)) ws.SendText(q);
                     continue;
                 }
                 term = feed.Get(pid);
